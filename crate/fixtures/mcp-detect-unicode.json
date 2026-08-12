@@ -1,0 +1,339 @@
+[
+  {
+    "name": "the Trojan Source sample: six bidi controls, and not one of them in the answer",
+    "file": "trojan-source.c",
+    "arguments": {},
+    "expected": {
+      "data": {
+        "findings": [
+          {
+            "codepoints": [
+              "U+202E"
+            ],
+            "column": 7,
+            "detail": "right-to-left override: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs",
+            "kind": "bidi-control",
+            "line": 6,
+            "offset": 86,
+            "scripts": [
+              "Common"
+            ],
+            "severity": "high"
+          },
+          {
+            "codepoints": [
+              "U+2066"
+            ],
+            "column": 11,
+            "detail": "left-to-right isolate: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs",
+            "kind": "bidi-control",
+            "line": 6,
+            "offset": 92,
+            "scripts": [
+              "Common"
+            ],
+            "severity": "high"
+          },
+          {
+            "codepoints": [
+              "U+2069"
+            ],
+            "column": 24,
+            "detail": "pop directional isolate: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs",
+            "kind": "bidi-control",
+            "line": 6,
+            "offset": 107,
+            "scripts": [
+              "Common"
+            ],
+            "severity": "high"
+          },
+          {
+            "codepoints": [
+              "U+2066"
+            ],
+            "column": 26,
+            "detail": "left-to-right isolate: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs",
+            "kind": "bidi-control",
+            "line": 6,
+            "offset": 111,
+            "scripts": [
+              "Common"
+            ],
+            "severity": "high"
+          },
+          {
+            "codepoints": [
+              "U+202E"
+            ],
+            "column": 24,
+            "detail": "right-to-left override: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs",
+            "kind": "bidi-control",
+            "line": 8,
+            "offset": 198,
+            "scripts": [
+              "Common"
+            ],
+            "severity": "high"
+          },
+          {
+            "codepoints": [
+              "U+2066"
+            ],
+            "column": 28,
+            "detail": "left-to-right isolate: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs",
+            "kind": "bidi-control",
+            "line": 8,
+            "offset": 204,
+            "scripts": [
+              "Common"
+            ],
+            "severity": "high"
+          }
+        ],
+        "refusals": []
+      },
+      "diagnostics": [],
+      "meta": {
+        "count": 6,
+        "tool": "detect_unicode_risks",
+        "truncated": false
+      },
+      "ok": true
+    }
+  },
+  {
+    "name": "a clean document is an ordinary result, not an error",
+    "content": "const total = 1 + 2;\n",
+    "arguments": {},
+    "expected": {
+      "data": {
+        "findings": [],
+        "refusals": []
+      },
+      "diagnostics": [],
+      "meta": {
+        "count": 0,
+        "tool": "detect_unicode_risks",
+        "truncated": false
+      },
+      "ok": true
+    }
+  },
+  {
+    "name": "a Chinese catalogue is refused for the script checks and screened for everything else",
+    "file": "zh-cn.json",
+    "arguments": {},
+    "expected": {
+      "data": {
+        "findings": [],
+        "refusals": [
+          {
+            "detail": "41% of this file's letters are Han, and no expected script was declared for it. The confusable and mixed-script checks did not run here: in a file written in another script there is nothing to tell a forged name from a translated one, and answering anyway would bury the real findings. Every other check did run.",
+            "reason": "intentional_script_context"
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "intentional_script_context",
+          "message": "41% of this file's letters are Han, and no expected script was declared for it. The confusable and mixed-script checks did not run here: in a file written in another script there is nothing to tell a forged name from a translated one, and answering anyway would bury the real findings. Every other check did run.",
+          "severity": "warning"
+        }
+      ],
+      "meta": {
+        "count": 0,
+        "tool": "detect_unicode_risks",
+        "truncated": false
+      },
+      "ok": true
+    }
+  },
+  {
+    "name": "naming the script lifts the refusal, and the answer is still clean",
+    "file": "zh-cn.json",
+    "arguments": {
+      "scripts": [
+        "Han"
+      ]
+    },
+    "expected": {
+      "data": {
+        "findings": [],
+        "refusals": []
+      },
+      "diagnostics": [],
+      "meta": {
+        "count": 0,
+        "tool": "detect_unicode_risks",
+        "truncated": false
+      },
+      "ok": true
+    }
+  },
+  {
+    "name": "a kind filter narrows the findings and drops the refusal it no longer concerns",
+    "file": "ru.json",
+    "arguments": {
+      "kinds": [
+        "bidi",
+        "invisible"
+      ]
+    },
+    "expected": {
+      "data": {
+        "findings": [],
+        "refusals": []
+      },
+      "diagnostics": [],
+      "meta": {
+        "count": 0,
+        "tool": "detect_unicode_risks",
+        "truncated": false
+      },
+      "ok": true
+    }
+  },
+  {
+    "name": "a homoglyph is reported as two findings: the mixed word and the character",
+    "file": "homoglyph.js",
+    "arguments": {},
+    "expected": {
+      "data": {
+        "findings": [
+          {
+            "codepoints": [
+              "U+0430"
+            ],
+            "column": 7,
+            "detail": "one word written in Cyrillic and Latin: no single script accounts for it, which is how a name that reads as familiar is forged",
+            "kind": "mixed-script",
+            "line": 2,
+            "offset": 69,
+            "scripts": [
+              "Cyrillic",
+              "Latin"
+            ],
+            "severity": "high"
+          },
+          {
+            "codepoints": [
+              "U+0430"
+            ],
+            "column": 8,
+            "detail": "a Cyrillic character in a word that is not Cyrillic, and it reduces to the codepoint under `resembles`: the two are indistinguishable on screen",
+            "kind": "confusable",
+            "line": 2,
+            "offset": 70,
+            "resembles": [
+              "U+0061"
+            ],
+            "scripts": [
+              "Cyrillic"
+            ],
+            "severity": "high"
+          },
+          {
+            "codepoints": [
+              "U+03BF"
+            ],
+            "column": 7,
+            "detail": "one word written in Greek and Latin: no single script accounts for it, which is how a name that reads as familiar is forged",
+            "kind": "mixed-script",
+            "line": 3,
+            "offset": 108,
+            "scripts": [
+              "Greek",
+              "Latin"
+            ],
+            "severity": "high"
+          },
+          {
+            "codepoints": [
+              "U+03BF"
+            ],
+            "column": 8,
+            "detail": "a Greek character in a word that is not Greek, and it reduces to the codepoint under `resembles`: the two are indistinguishable on screen",
+            "kind": "confusable",
+            "line": 3,
+            "offset": 109,
+            "resembles": [
+              "U+006F"
+            ],
+            "scripts": [
+              "Greek"
+            ],
+            "severity": "high"
+          }
+        ],
+        "refusals": []
+      },
+      "diagnostics": [],
+      "meta": {
+        "count": 4,
+        "tool": "detect_unicode_risks",
+        "truncated": false
+      },
+      "ok": true
+    }
+  },
+  {
+    "name": "a cap that drops findings says so rather than answering short",
+    "file": "invisible.ts",
+    "arguments": {
+      "maxResults": 2
+    },
+    "expected": {
+      "data": {
+        "findings": [
+          {
+            "codepoints": [
+              "U+200B"
+            ],
+            "column": 11,
+            "detail": "zero width space: takes up no width, so two strings that are not equal look identical",
+            "kind": "invisible",
+            "line": 3,
+            "offset": 99,
+            "scripts": [
+              "Common"
+            ],
+            "severity": "medium"
+          },
+          {
+            "codepoints": [
+              "U+00AD"
+            ],
+            "column": 20,
+            "detail": "soft hyphen: takes up no width, so two strings that are not equal look identical",
+            "kind": "invisible",
+            "line": 4,
+            "offset": 137,
+            "scripts": [
+              "Common"
+            ],
+            "severity": "medium"
+          }
+        ],
+        "refusals": []
+      },
+      "diagnostics": [],
+      "meta": {
+        "count": 2,
+        "tool": "detect_unicode_risks",
+        "truncated": true
+      },
+      "ok": true
+    }
+  },
+  {
+    "name": "an unknown kind is refused by name",
+    "content": "x",
+    "arguments": {
+      "kinds": [
+        "homoglyph"
+      ]
+    },
+    "expectedError": "homoglyph is not a kind; one of: bidi, invisible, confusable, mixed-script, non-nfc, whitespace, unassigned"
+  }
+]

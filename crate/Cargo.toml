@@ -1,0 +1,90 @@
+[package]
+name = "unicode-le"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+readme = "README.md"
+description = "Find the Unicode characters in a codebase that hide meaning — Trojan Source bidi controls, invisibles, homoglyphs, mixed scripts"
+authors = ["Nolin D Naidoo"]
+homepage = "https://letools.dev/tools/unicode-le"
+repository = "https://github.com/nolindnaidoo/unicode-le"
+keywords = ["unicode", "security", "trojan-source", "homoglyph", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+# What a consumer gets, and why. Same policy as the sibling crates.
+#
+# Ships: src/, Cargo.toml, Cargo.lock, LICENSE, README.md — needed to
+# build the binary. SPEC.md and CHANGELOG.md — the behavioural contract
+# someone scripting against the exit codes needs. tests/ and fixtures/ —
+# needed to *verify*: `cargo test` on the unpacked tarball runs the full
+# corpus, so the claims in the README are checkable rather than trusted.
+#
+# Excluded: AGENTS.md and CLAUDE.md are how this repo is worked on, not
+# how the tool is used. rust-toolchain.toml is a convenience for
+# contributors to *this* checkout; shipped, it would pin the toolchain of
+# anyone who unpacks or vendors the crate, which is not this crate's
+# business.
+exclude = ["AGENTS.md", "CLAUDE.md", "rust-toolchain.toml"]
+
+[[bin]]
+name = "unicode-le"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# UAX #39 — confusable skeletons, mixed-script resolution, restriction
+# levels — from unicode-rs, MIT/Apache-2.0, on Unicode 15.1 data.
+#
+# This is the whole reason the crate is small. UAX #39 is a *data*
+# standard: confusables.txt is 6000-odd mappings that move with every
+# Unicode release, and hand-copying them here would buy nothing and owe
+# a maintenance debt forever. What this crate cannot do is find the risk
+# in a tree, locate it at a line and column, and refuse to judge a file
+# that is legitimately not Latin — and that is the layer unicode-le is.
+# See SPEC.md, "Discovery: what already exists".
+unicode-security = "0.1"
+# UAX #24 script and script-extension properties. Already underneath
+# `unicode-security`, so naming it directly costs nothing — and it is
+# what answers the two questions the report needs and UTS #39 does not:
+# which script a single character belongs to, and whether a codepoint is
+# assigned at all (`Script::Unknown` is exactly unassigned, private-use,
+# noncharacter and surrogate).
+unicode-script = "0.5"
+# UAX #15. Answers which normalization form a document is in, and
+# supplies the NFKC fold that turns a fullwidth or mathematical letter
+# into the ASCII letter it is impersonating. Also already underneath
+# `unicode-security`.
+unicode-normalization = "0.1"
+# The walker. `ignore` is ripgrep's, so "what this tool walks" and "what
+# ripgrep walks" are the same answer — which is the answer a person
+# auditing a repository already has in their head.
+ignore = "0.4"
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 1
+# Every output of this tool is a claim someone scripts against — a line
+# number, a column, a byte offset, a count. A wrapped number is silently
+# wrong data in a report whose whole value is honesty, which is worse
+# than a crash — so overflow keeps panicking in release, as it does in
+# debug. (Same rule as pixelcoords, pixelactions, scrape-le and regex-le.)
+overflow-checks = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Deliberate relaxations, same policy as the other crates: no inline
+# #[allow] anywhere (CI enforces); anything relaxed must be listed here,
+# visibly.
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+cast_precision_loss = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"

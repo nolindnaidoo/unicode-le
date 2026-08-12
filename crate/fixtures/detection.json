@@ -1,0 +1,581 @@
+{
+  "documents": [
+    {
+      "name": "the Trojan Source sample from CVE-2021-42574: an if-guard that renders but does not compile",
+      "file": "trojan-source.c",
+      "expected": [
+        {
+          "kind": "bidi-control",
+          "severity": "high",
+          "line": 6,
+          "column": 7,
+          "offset": 86,
+          "codepoints": [
+            "U+202E"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "right-to-left override: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs"
+        },
+        {
+          "kind": "bidi-control",
+          "severity": "high",
+          "line": 6,
+          "column": 11,
+          "offset": 92,
+          "codepoints": [
+            "U+2066"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "left-to-right isolate: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs"
+        },
+        {
+          "kind": "bidi-control",
+          "severity": "high",
+          "line": 6,
+          "column": 24,
+          "offset": 107,
+          "codepoints": [
+            "U+2069"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "pop directional isolate: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs"
+        },
+        {
+          "kind": "bidi-control",
+          "severity": "high",
+          "line": 6,
+          "column": 26,
+          "offset": 111,
+          "codepoints": [
+            "U+2066"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "left-to-right isolate: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs"
+        },
+        {
+          "kind": "bidi-control",
+          "severity": "high",
+          "line": 8,
+          "column": 24,
+          "offset": 198,
+          "codepoints": [
+            "U+202E"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "right-to-left override: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs"
+        },
+        {
+          "kind": "bidi-control",
+          "severity": "high",
+          "line": 8,
+          "column": 28,
+          "offset": 204,
+          "codepoints": [
+            "U+2066"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "left-to-right isolate: a bidirectional control reorders how the rest of the line renders, so the text a reviewer reads is not the text that runs"
+        }
+      ]
+    },
+    {
+      "name": "one of every invisible character, each inside an ordinary-looking string",
+      "file": "invisible.ts",
+      "expected": [
+        {
+          "kind": "invisible",
+          "severity": "medium",
+          "line": 3,
+          "column": 11,
+          "offset": 99,
+          "codepoints": [
+            "U+200B"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "zero width space: takes up no width, so two strings that are not equal look identical"
+        },
+        {
+          "kind": "invisible",
+          "severity": "medium",
+          "line": 4,
+          "column": 20,
+          "offset": 137,
+          "codepoints": [
+            "U+00AD"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "soft hyphen: takes up no width, so two strings that are not equal look identical"
+        },
+        {
+          "kind": "invisible",
+          "severity": "medium",
+          "line": 5,
+          "column": 18,
+          "offset": 163,
+          "codepoints": [
+            "U+200D"
+          ],
+          "scripts": [
+            "Inherited"
+          ],
+          "detail": "zero width joiner: takes up no width, so two strings that are not equal look identical"
+        },
+        {
+          "kind": "invisible",
+          "severity": "medium",
+          "line": 6,
+          "column": 16,
+          "offset": 185,
+          "codepoints": [
+            "U+2060"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "word joiner: takes up no width, so two strings that are not equal look identical"
+        },
+        {
+          "kind": "invisible",
+          "severity": "medium",
+          "line": 7,
+          "column": 19,
+          "offset": 210,
+          "codepoints": [
+            "U+FEFF"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "zero width no-break space: takes up no width, so two strings that are not equal look identical"
+        },
+        {
+          "kind": "invisible",
+          "severity": "medium",
+          "line": 8,
+          "column": 21,
+          "offset": 238,
+          "codepoints": [
+            "U+180E"
+          ],
+          "scripts": [
+            "Mongolian"
+          ],
+          "detail": "mongolian vowel separator: takes up no width, so two strings that are not equal look identical"
+        },
+        {
+          "kind": "invisible",
+          "severity": "medium",
+          "line": 9,
+          "column": 17,
+          "offset": 261,
+          "codepoints": [
+            "U+200C"
+          ],
+          "scripts": [
+            "Inherited"
+          ],
+          "detail": "zero width non-joiner: takes up no width, so two strings that are not equal look identical"
+        }
+      ]
+    },
+    {
+      "name": "a Cyrillic and a Greek letter, each hiding in a Latin identifier",
+      "file": "homoglyph.js",
+      "expected": [
+        {
+          "kind": "mixed-script",
+          "severity": "high",
+          "line": 2,
+          "column": 7,
+          "offset": 69,
+          "codepoints": [
+            "U+0430"
+          ],
+          "scripts": [
+            "Cyrillic",
+            "Latin"
+          ],
+          "detail": "one word written in Cyrillic and Latin: no single script accounts for it, which is how a name that reads as familiar is forged"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 2,
+          "column": 8,
+          "offset": 70,
+          "codepoints": [
+            "U+0430"
+          ],
+          "scripts": [
+            "Cyrillic"
+          ],
+          "resembles": [
+            "U+0061"
+          ],
+          "detail": "a Cyrillic character in a word that is not Cyrillic, and it reduces to the codepoint under `resembles`: the two are indistinguishable on screen"
+        },
+        {
+          "kind": "mixed-script",
+          "severity": "high",
+          "line": 3,
+          "column": 7,
+          "offset": 108,
+          "codepoints": [
+            "U+03BF"
+          ],
+          "scripts": [
+            "Greek",
+            "Latin"
+          ],
+          "detail": "one word written in Greek and Latin: no single script accounts for it, which is how a name that reads as familiar is forged"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 3,
+          "column": 8,
+          "offset": 109,
+          "codepoints": [
+            "U+03BF"
+          ],
+          "scripts": [
+            "Greek"
+          ],
+          "resembles": [
+            "U+006F"
+          ],
+          "detail": "a Greek character in a word that is not Greek, and it reduces to the codepoint under `resembles`: the two are indistinguishable on screen"
+        }
+      ]
+    },
+    {
+      "name": "compatibility forms: full-width letters and digits, and a mathematical letter",
+      "file": "fullwidth.ts",
+      "expected": [
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 2,
+          "column": 7,
+          "offset": 77,
+          "codepoints": [
+            "U+FF26"
+          ],
+          "scripts": [
+            "Latin"
+          ],
+          "resembles": [
+            "U+0046"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 2,
+          "column": 8,
+          "offset": 80,
+          "codepoints": [
+            "U+FF29"
+          ],
+          "scripts": [
+            "Latin"
+          ],
+          "resembles": [
+            "U+0049"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 2,
+          "column": 9,
+          "offset": 83,
+          "codepoints": [
+            "U+FF2C"
+          ],
+          "scripts": [
+            "Latin"
+          ],
+          "resembles": [
+            "U+004C"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 2,
+          "column": 10,
+          "offset": 86,
+          "codepoints": [
+            "U+FF25"
+          ],
+          "scripts": [
+            "Latin"
+          ],
+          "resembles": [
+            "U+0045"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 3,
+          "column": 14,
+          "offset": 115,
+          "codepoints": [
+            "U+FF10"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "resembles": [
+            "U+0030"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 3,
+          "column": 15,
+          "offset": 118,
+          "codepoints": [
+            "U+FF11"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "resembles": [
+            "U+0031"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 4,
+          "column": 7,
+          "offset": 133,
+          "codepoints": [
+            "U+1D41A"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "resembles": [
+            "U+0061"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        }
+      ]
+    },
+    {
+      "name": "one identifier written in two writing systems",
+      "file": "mixed-script.py",
+      "expected": [
+        {
+          "kind": "mixed-script",
+          "severity": "high",
+          "line": 2,
+          "column": 1,
+          "offset": 63,
+          "codepoints": [
+            "U+6587",
+            "U+4EF6"
+          ],
+          "scripts": [
+            "Han",
+            "Latin"
+          ],
+          "detail": "one word written in Han and Latin: no single script accounts for it, which is how a name that reads as familiar is forged"
+        }
+      ]
+    },
+    {
+      "name": "a decomposed line and a composed one, so the check fires on exactly one",
+      "file": "nfd.txt",
+      "expected": [
+        {
+          "kind": "non-nfc",
+          "severity": "low",
+          "line": 1,
+          "column": 4,
+          "offset": 3,
+          "codepoints": [
+            "U+0065",
+            "U+0301"
+          ],
+          "detail": "this line is in NFD, not NFC: it compares unequal, hashes differently and indexes differently from the same text written in NFC"
+        }
+      ]
+    },
+    {
+      "name": "three spaces that are not the space",
+      "file": "whitespace.md",
+      "expected": [
+        {
+          "kind": "unusual-whitespace",
+          "severity": "low",
+          "line": 3,
+          "column": 18,
+          "offset": 28,
+          "codepoints": [
+            "U+00A0"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "no-break space: renders like a space and is not one, so a trim, a split or a comparison against U+0020 does not see it"
+        },
+        {
+          "kind": "unusual-whitespace",
+          "severity": "low",
+          "line": 4,
+          "column": 22,
+          "offset": 57,
+          "codepoints": [
+            "U+3000"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "ideographic space: renders like a space and is not one, so a trim, a split or a comparison against U+0020 does not see it"
+        },
+        {
+          "kind": "unusual-whitespace",
+          "severity": "low",
+          "line": 5,
+          "column": 14,
+          "offset": 79,
+          "codepoints": [
+            "U+2009"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "thin space: renders like a space and is not one, so a trim, a split or a comparison against U+0020 does not see it"
+        }
+      ]
+    },
+    {
+      "name": "a private-use codepoint and an unassigned one, one kind and two reasons",
+      "file": "private-use.txt",
+      "expected": [
+        {
+          "kind": "unassigned-or-private-use",
+          "severity": "medium",
+          "line": 1,
+          "column": 14,
+          "offset": 13,
+          "codepoints": [
+            "U+E000"
+          ],
+          "scripts": [
+            "Unknown"
+          ],
+          "detail": "a private-use codepoint: its meaning is whatever the system that produced it decided, and no other system agrees"
+        },
+        {
+          "kind": "unassigned-or-private-use",
+          "severity": "medium",
+          "line": 2,
+          "column": 13,
+          "offset": 29,
+          "codepoints": [
+            "U+0378"
+          ],
+          "scripts": [
+            "Unknown"
+          ],
+          "detail": "not assigned in Unicode 17.0.0: no renderer, no collation and no agreed meaning"
+        }
+      ]
+    },
+    {
+      "name": "a leading byte-order mark, which is the encoding, and an interior one, which is not",
+      "file": "bom.ts",
+      "expected": [
+        {
+          "kind": "invisible",
+          "severity": "medium",
+          "line": 1,
+          "column": 15,
+          "offset": 16,
+          "codepoints": [
+            "U+FEFF"
+          ],
+          "scripts": [
+            "Common"
+          ],
+          "detail": "zero width no-break space: takes up no width, so two strings that are not equal look identical"
+        }
+      ]
+    },
+    {
+      "name": "accented Latin and nothing else: the document that must produce nothing",
+      "file": "clean.ts",
+      "expected": []
+    },
+    {
+      "name": "a Chinese catalogue: refused rather than judged, and no confusable findings",
+      "file": "zh-cn.json",
+      "expected": [],
+      "refusals": [
+        "intentional_script_context"
+      ]
+    },
+    {
+      "name": "a Russian catalogue: refused rather than judged, and no confusable findings",
+      "file": "ru.json",
+      "expected": [],
+      "refusals": [
+        "intentional_script_context"
+      ]
+    },
+    {
+      "name": "a Japanese catalogue mixing Han, Hiragana and Katakana in single words",
+      "file": "ja.json",
+      "expected": [],
+      "refusals": [
+        "intentional_script_context"
+      ]
+    }
+  ],
+  "encodings": [
+    {
+      "name": "a UTF-16LE byte-order mark: refused rather than decoded as something else",
+      "file": "utf16le.txt",
+      "reason": "encoding_unknown"
+    },
+    {
+      "name": "a PNG header: never a text candidate",
+      "file": "binary.dat",
+      "reason": "binary_or_undecodable"
+    },
+    {
+      "name": "Latin-1 bytes with no mark and no NUL: still not UTF-8, and not guessed at",
+      "file": "latin1.txt",
+      "reason": "binary_or_undecodable"
+    }
+  ]
+}
