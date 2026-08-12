@@ -26,14 +26,33 @@ pub(crate) struct Position {
     pub(crate) column: usize,
 }
 
-/// A prepared index over one document. Building it is O(bytes); each
-/// lookup is a binary search plus a UTF-16 count of the current line's
-/// prefix, which is bounded by the line length rather than the file.
+/// A prepared index over one document. Building it is O(bytes). A lookup
+/// is a binary search, then a column: arithmetic when the document is
+/// ASCII, and a bounded scan from the nearest checkpoint when it is not.
 pub(crate) struct PositionIndex<'a> {
     content: &'a str,
     /// Byte offset of the first character of each line.
     line_starts: Vec<usize>,
+    /// `(byte offset, UTF-16 code units before it)`, every
+    /// `CHECKPOINT_BYTES` or so.
+    ///
+    /// **Empty when the document is ASCII**, where a byte offset *is* a
+    /// UTF-16 offset and a column is arithmetic. Without the
+    /// checkpoints, a non-ASCII document re-counts code units from the
+    /// line start on every lookup — invisible on a source file, and
+    /// quadratic on the one shape this tool is pointed at most: a
+    /// minified bundle, which is one line holding the whole document,
+    /// and one lookup per finding in it. Measured on a debug build:
+    /// 5,000 findings on such a line took 1.4s, 10,000 took 5.5s and
+    /// 20,000 took 21.8s, which is the shape of a square. `ips-le` hit
+    /// the same shape on a log with a megabyte line.
+    checkpoints: Vec<(usize, usize)>,
 }
+
+/// How far a lookup may have to scan. Small enough that the scan is
+/// irrelevant, large enough that the index is a rounding error on a
+/// document's size.
+const CHECKPOINT_BYTES: usize = 1024;
 
 impl<'a> PositionIndex<'a> {
     pub(crate) fn new(content: &'a str) -> Self {
@@ -48,6 +67,7 @@ impl<'a> PositionIndex<'a> {
         Self {
             content,
             line_starts,
+            checkpoints: checkpoints(content),
         }
     }
 
@@ -60,11 +80,24 @@ impl<'a> PositionIndex<'a> {
         let clamped = self.floor_to_boundary(offset.min(self.content.len()));
         let line_index = self.line_starts.partition_point(|&start| start <= clamped) - 1;
         let line_start = self.line_starts[line_index];
-        let column = self.content[line_start..clamped].encode_utf16().count() + 1;
         Position {
             line: line_index + 1,
-            column,
+            column: self.units_before(clamped) - self.units_before(line_start) + 1,
         }
+    }
+
+    /// UTF-16 code units before a byte offset, from the nearest
+    /// checkpoint at or below it.
+    fn units_before(&self, offset: usize) -> usize {
+        // ASCII: one byte, one code unit, no index needed.
+        let Some(&(byte, units)) = self.checkpoints.get(
+            self.checkpoints
+                .partition_point(|(at, _)| *at <= offset)
+                .wrapping_sub(1),
+        ) else {
+            return offset;
+        };
+        units + self.content[byte..offset].encode_utf16().count()
     }
 
     fn floor_to_boundary(&self, mut offset: usize) -> usize {
@@ -73,6 +106,25 @@ impl<'a> PositionIndex<'a> {
         }
         offset
     }
+}
+
+/// Running UTF-16 counts at char boundaries roughly `CHECKPOINT_BYTES`
+/// apart. Empty for an ASCII document, which needs none.
+fn checkpoints(content: &str) -> Vec<(usize, usize)> {
+    if content.is_ascii() {
+        return Vec::new();
+    }
+    let mut out = vec![(0, 0)];
+    let mut units = 0;
+    let mut next = CHECKPOINT_BYTES;
+    for (offset, character) in content.char_indices() {
+        if offset >= next {
+            out.push((offset, units));
+            next = offset + CHECKPOINT_BYTES;
+        }
+        units += character.len_utf16();
+    }
+    out
 }
 
 #[cfg(test)]
@@ -131,6 +183,55 @@ mod tests {
     fn an_offset_inside_a_character_floors_to_its_start() {
         let index = PositionIndex::new("é!");
         assert_eq!(index.at(1), Position { line: 1, column: 1 });
+    }
+
+    /// The naive answer, written out once so the indexed one has
+    /// something to be held to.
+    fn counted(content: &str, offset: usize) -> Position {
+        let line = content[..offset].bytes().filter(|b| *b == b'\n').count();
+        let line_start = content[..offset].rfind('\n').map_or(0, |index| index + 1);
+        Position {
+            line: line + 1,
+            column: content[line_start..offset].encode_utf16().count() + 1,
+        }
+    }
+
+    /// The indexed path and the counted path must agree at **every**
+    /// offset, or the checkpoint index is a second implementation with
+    /// its own answers. Run over an ASCII document, which takes the
+    /// no-index path, and a non-ASCII one long enough to cross several
+    /// checkpoints — including one that is a single line, which is the
+    /// shape the checkpoints exist for.
+    #[test]
+    fn the_indexed_path_agrees_with_the_counted_path_everywhere() {
+        let ascii = "abc\ndef\nghi";
+        let mut lines = String::new();
+        let mut one_line = String::new();
+        for n in 0..400 {
+            use std::fmt::Write as _;
+            let _ = writeln!(lines, "cafe\u{301} {n} \u{1d41a}");
+            let _ = write!(one_line, "cafe\u{301} {n} \u{1d41a} ");
+        }
+        for content in [ascii, lines.as_str(), one_line.as_str()] {
+            let index = PositionIndex::new(content);
+            assert!(
+                content.is_ascii() || index.checkpoints.len() > 3,
+                "the long documents must cross several checkpoints"
+            );
+            for offset in 0..=content.len() {
+                if !content.is_char_boundary(offset) {
+                    continue;
+                }
+                assert_eq!(index.at(offset), counted(content, offset), "at {offset}");
+            }
+        }
+    }
+
+    /// An ASCII document builds no index at all — the cheapest path is
+    /// also the common one.
+    #[test]
+    fn an_ascii_document_needs_no_checkpoints() {
+        assert!(PositionIndex::new("abc\ndef").checkpoints.is_empty());
     }
 
     /// A carriage return is an ordinary character, not a line break.
