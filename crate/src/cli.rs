@@ -128,7 +128,9 @@ fn execute(args: &[String]) -> Result<u8, String> {
     // Escaped after serialization, never before: `serde_json` would
     // escape the backslash of a pre-escaped path and the report would
     // stop round-tripping. See `escape`.
-    let line = escape::json(&serde_json::to_string(&report).expect("a report serializes"));
+    let document = serde_json::to_string(&report)
+        .map_err(|error| format!("could not serialize the report: {error}"))?;
+    let line = escape::json(&document);
     writeln!(stdout, "{line}").map_err(|error| format!("could not write the report: {error}"))?;
     drop(stdout);
 
