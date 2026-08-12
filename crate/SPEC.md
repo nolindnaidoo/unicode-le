@@ -173,6 +173,23 @@ shorter than the English they replace: 16% of its letters are Han. A
 single foreign word quoted in an English document is a tenth of one
 percent. Ten sits comfortably between them.
 
+*The share is over the **undeclared** scripts alone*, and the denominator
+is every letter in the file. A file that is 98% Japanese and holds six
+Cyrillic letters is 5.8% undeclared once Han, Hiragana and Katakana are
+named, so it is judged rather than refused — the caller has accounted for
+what the file is written in, and a Latin baseline is back. Counting every
+non-Latin letter and then naming only the undeclared scripts got both the
+number and the outcome wrong, and the outcome was the serious half:
+declaring the script a repository is written in switched the homoglyph
+check off for every file in it. The refusal survives for what it was for,
+a file with **no useful Latin baseline at all**.
+
+The refusal's wording follows the same split. With nothing declared it
+says no expected script was declared and what to name; with something
+declared it says none of the scripts it found is among them, because
+telling a caller they declared nothing when they did is false and sends
+them to check a flag they already passed.
+
 **3. A declared script is an expected script.** `--script Han` does more
 than lift the refusal: it changes what counts. CJK is written without
 spaces, so `CSVストリーミング` is one word under any segmentation, and a
@@ -227,7 +244,7 @@ was never looked at.
 |---|---|---|
 | `binary_or_undecodable` | a NUL byte in the first 8 KB, bytes that are not valid UTF-8, or a file that could not be read | nothing |
 | `encoding_unknown` | a UTF-16 or UTF-32 byte-order mark | nothing |
-| `intentional_script_context` | ≥10% of the letters belong to an undeclared non-Latin script | everything except the confusable and mixed-script checks |
+| `intentional_script_context` | ≥10% of the file's letters belong to a non-Latin script that was **not** declared | everything except the confusable and mixed-script checks |
 
 **No encoding is ever guessed.** This matters more here than in any
 sibling: read a UTF-16 file as UTF-8 or Latin-1 and every second byte
@@ -297,6 +314,14 @@ finds: an invisible U+2060 is three bytes and one code unit; a
 mathematical U+1D41A is four bytes, one scalar and **two** code units.
 The byte offset is carried alongside for callers that address the file
 rather than the editor.
+
+**Paths are separated by `/` on every platform**, including Windows. A
+report is diffed against one produced on another machine and read by
+someone who does not have the tree, so a separator that moves with the
+operating system makes every line differ for no reason a reader can see.
+The one exception is a refusal naming a path the caller supplied, which
+comes back exactly as typed: a message that rewrites its own path cannot
+be grepped for by the person who typed it.
 
 ### Exit codes are the API
 

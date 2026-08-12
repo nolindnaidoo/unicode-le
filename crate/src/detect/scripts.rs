@@ -26,7 +26,11 @@
 //! start reporting full-width letters that are ordinary typography
 //! there. Rather than answer badly, this says it did not answer and asks
 //! for the script to be named. Everything else — bidi controls,
-//! invisibles, spaces, normalization — still runs on that file.
+//! invisibles, spaces, normalization — still runs on that file. The
+//! share that triggers it is measured over the scripts the caller did
+//! **not** declare: a file the caller has accounted for has a baseline
+//! again, and refusing it would make declaring a way of switching the
+//! check off rather than of turning it on.
 //!
 //! **A declared script is an expected script.** Naming one is not just a
 //! way past the refusal; it changes what counts. CJK is written without
@@ -69,32 +73,55 @@ const NOT_IMPERSONATING: [(char, char); 4] = [
 
 /// Whether this file may be judged for confusables and mixed script, or
 /// a refusal saying why it may not.
+///
+/// **The share is over the undeclared scripts alone.** Measuring every
+/// non-Latin letter and then naming only the undeclared ones told a
+/// caller that "98% of this file's letters are Cyrillic" about a file
+/// holding six Cyrillic letters and four hundred Japanese ones — and
+/// refused it, *after* the caller had declared Han, Hiragana and
+/// Katakana. That is the worst way for this to be wrong: declaring the
+/// script a repository is written in turned the confusable check off for
+/// every file in it, which is where a homoglyph would be hiding.
 pub(crate) fn context(content: &str, expected: &[Script]) -> Option<Refusal> {
-    let (letters, foreign, mut found) = survey(content);
-    found.retain(|script| !expected.contains(script));
+    let (letters, mut found) = survey(content);
+    found.retain(|(script, _)| !expected.contains(script));
     if found.is_empty() {
         return None;
     }
     // Percentages, not floats: the comparison has to be the same on
     // every platform, and a report that flipped on a rounding difference
     // would be a report nobody could reproduce.
-    if foreign * 100 < letters * FOREIGN_SHARE_PERCENT {
+    let undeclared: usize = found.iter().map(|(_, count)| *count).sum();
+    if undeclared * 100 < letters * FOREIGN_SHARE_PERCENT {
         return None;
     }
 
-    found.sort_unstable_by_key(|script| script.full_name());
-    let names: Vec<&str> = found.iter().map(|script| script.full_name()).collect();
+    found.sort_unstable_by_key(|(script, _)| script.full_name());
+    let names: Vec<&str> = found.iter().map(|(script, _)| script.full_name()).collect();
     Some(Refusal {
         reason: Reason::IntentionalScriptContext,
         detail: format!(
-            "{}% of this file's letters are {}, and no expected script was declared for it. The \
-             confusable and mixed-script checks did not run here: in a file written in another \
-             script there is nothing to tell a forged name from a translated one, and answering \
-             anyway would bury the real findings. Every other check did run.",
-            foreign * 100 / letters.max(1),
-            join_names(&names)
+            "{}% of this file's letters are {}, {}. The confusable and mixed-script checks did \
+             not run here: in a file written in another script there is nothing to tell a forged \
+             name from a translated one, and answering anyway would bury the real findings. Every \
+             other check did run.",
+            undeclared * 100 / letters.max(1),
+            join_names(&names),
+            declaration(expected)
         ),
     })
+}
+
+/// The clause after the script names. A caller who declared nothing is
+/// told what to do; a caller who declared something and still got this
+/// is told that what they declared does not cover what is in the file —
+/// saying "no expected script was declared" to them is simply false, and
+/// sends them to check a flag they already passed.
+fn declaration(expected: &[Script]) -> &'static str {
+    if expected.is_empty() {
+        return "and no expected script was declared for it";
+    }
+    "and none of those is among the scripts declared for it"
 }
 
 /// `A`, `A and B`, `A, B and C`. Written out because a bare `join(" and
@@ -108,12 +135,15 @@ fn join_names(names: &[&str]) -> String {
     }
 }
 
-/// How many letters, how many of them belong to a non-Latin script, and
-/// which scripts those are.
-fn survey(content: &str) -> (usize, usize, Vec<Script>) {
+/// How many letters the file holds, and how many of them belong to each
+/// non-Latin script written in it.
+///
+/// Counted per script rather than summed: the caller subtracts the
+/// scripts that were declared, and a single total cannot be subtracted
+/// from.
+fn survey(content: &str) -> (usize, Vec<(Script, usize)>) {
     let mut letters = 0;
-    let mut foreign = 0;
-    let mut found: Vec<Script> = Vec::new();
+    let mut found: Vec<(Script, usize)> = Vec::new();
     for character in content.chars().filter(|c| c.is_alphabetic()) {
         letters += 1;
         let script = character.script();
@@ -123,12 +153,12 @@ fn survey(content: &str) -> (usize, usize, Vec<Script>) {
         ) {
             continue;
         }
-        foreign += 1;
-        if !found.contains(&script) {
-            found.push(script);
+        match found.iter_mut().find(|(seen, _)| *seen == script) {
+            Some((_, count)) => *count += 1,
+            None => found.push((script, 1)),
         }
     }
-    (letters, foreign, found)
+    (letters, found)
 }
 
 pub(crate) fn scan(content: &str, expected: &[Script]) -> Vec<Draft> {
@@ -581,6 +611,91 @@ mod tests {
             context(content, &[Script::Han]).is_some(),
             "declaring a different script is not a declaration for this one"
         );
+    }
+
+    /// A Japanese document with a handful of Cyrillic letters in it, and
+    /// Japanese declared.
+    fn japanese_with_a_trace_of_cyrillic() -> String {
+        format!("{} Привет", "これは日本語のテキストです。".repeat(8))
+    }
+
+    /// **The regression.** The share was counted over every non-Latin
+    /// letter and then attributed to the undeclared scripts alone, so a
+    /// file that is overwhelmingly Japanese and holds six Cyrillic
+    /// letters was refused with "98% of this file's letters are
+    /// Cyrillic". Three things were wrong and this pins the arithmetic:
+    /// the number is the undeclared share, which is under the threshold.
+    #[test]
+    fn the_share_is_measured_over_the_undeclared_scripts_only() {
+        let content = japanese_with_a_trace_of_cyrillic();
+        assert!(
+            context(&content, &[Script::Han, Script::Hiragana, Script::Katakana]).is_none(),
+            "a file that is 6% undeclared was refused as though it were 98%"
+        );
+
+        // Undeclared, the same file is a Japanese document and is
+        // refused — and the percentage names all three scripts, not one.
+        let refusal = context(&content, &[]).expect("a refusal");
+        let share: usize = refusal
+            .detail
+            .split('%')
+            .next()
+            .and_then(|number| number.parse().ok())
+            .expect("a leading percentage");
+        assert!(share > 90, "{}", refusal.detail);
+        assert!(refusal.detail.contains("Cyrillic"), "{}", refusal.detail);
+        assert!(refusal.detail.contains("Hiragana"), "{}", refusal.detail);
+    }
+
+    /// **The second half of the regression.** Declaring a script must
+    /// mean the checks *run*: a homoglyph in a Latin word inside a
+    /// Japanese file is exactly where one would hide, and the old
+    /// refusal suppressed the check for the whole file the moment a
+    /// caller declared the script their repository is written in.
+    #[test]
+    fn a_declared_file_is_judged_and_its_homoglyph_is_still_found() {
+        let content = format!(
+            "{} const p\u{430}ypal = 1;",
+            "これは日本語のテキストです。".repeat(8)
+        );
+        let expected = [Script::Han, Script::Hiragana, Script::Katakana];
+        assert!(context(&content, &expected).is_none(), "still refused");
+        assert_eq!(
+            scan(&content, &expected)
+                .into_iter()
+                .map(|draft| draft.kind)
+                .collect::<Vec<_>>(),
+            [Kind::MixedScript, Kind::Confusable]
+        );
+    }
+
+    /// A caller who declared a script and is refused anyway must not be
+    /// told they declared nothing: it is false, and it sends them to
+    /// check a flag they already passed.
+    #[test]
+    fn the_refusal_says_whether_a_script_was_declared() {
+        let content = "ключ: значение\nдругой: текст";
+        let undeclared = context(content, &[]).expect("a refusal");
+        assert!(
+            undeclared
+                .detail
+                .contains("no expected script was declared"),
+            "{}",
+            undeclared.detail
+        );
+
+        let declared = context(content, &[Script::Han]).expect("a refusal");
+        assert!(
+            !declared.detail.contains("no expected script was declared"),
+            "a declared script was reported as no declaration: {}",
+            declared.detail
+        );
+        assert!(
+            declared.detail.contains("none of those"),
+            "{}",
+            declared.detail
+        );
+        assert!(declared.detail.is_ascii(), "{}", declared.detail);
     }
 
     /// Refusals speak the caller's vocabulary, and one of the two
