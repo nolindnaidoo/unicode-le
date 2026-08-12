@@ -91,12 +91,15 @@ pub(crate) fn lines(text: &str) -> impl Iterator<Item = (usize, &str)> {
 
 /// A dotted path from its segments, skipping the empty ones a
 /// document's root produces.
-pub(crate) fn join(segments: &[String]) -> String {
+///
+/// Takes borrowed segments rather than owned ones: every caller holds a
+/// stack it is still using, and copying each segment to read it is a
+/// clone per finding on the file this tool is aimed at most.
+pub(crate) fn join<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
     segments
-        .iter()
+        .into_iter()
         .filter(|segment| !segment.is_empty())
-        .cloned()
-        .collect::<Vec<String>>()
+        .collect::<Vec<&str>>()
         .join(".")
 }
 
@@ -168,8 +171,8 @@ mod tests {
 
     #[test]
     fn a_path_skips_the_segments_a_root_leaves_empty() {
-        assert_eq!(join(&["a".to_string(), "b".to_string()]), "a.b");
-        assert_eq!(join(&[String::new(), "b".to_string()]), "b");
-        assert_eq!(join(&[]), "");
+        assert_eq!(join(["a", "b"]), "a.b");
+        assert_eq!(join(["", "b"]), "b");
+        assert_eq!(join([""; 0]), "");
     }
 }
