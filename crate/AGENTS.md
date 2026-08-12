@@ -107,6 +107,23 @@ crate/src/
   path has to open, a key has to match the document — and a test asserts
   the decoded path opens the file it names. The exemption these two used
   to have is what made a hostile file name exploitable.
+- **stdout escapes once; stderr escapes per field, so stderr is where a
+  field gets missed.** The report is escaped whole, after serialization,
+  and nothing in it can slip past. The human summary is assembled a piece
+  at a time in `scan::describe` and `scan::describe_refusal`, and every
+  piece has to be accounted for: the path, the key, and **the refusal
+  detail**. That last one looks like crate-authored prose and is, for
+  every refusal but one — `scan_file` folds the operating system's own
+  message into `binary_or_undecodable`, and that message is localized, so
+  a French or Japanese Windows answers a permission failure with
+  characters this stream promises never to carry. An English CI runner
+  never sees it.
+- **`USAGE` in `cli.rs` is the one output string nothing escapes.**
+  `--help` prints it verbatim, so an em dash typed into it is a non-ASCII
+  byte on the protocol stream. Held to ASCII by
+  `the_usage_text_is_ascii_because_help_prints_it_unescaped` and again at
+  the process boundary by `help_and_version_write_nothing_but_ascii`,
+  because the constant and the bytes a caller receives are two claims.
 - **A format decides how a finding is addressed, never whether it
   exists.** `detect/locate.rs` and the six readers behind it contribute
   key paths and nothing else; every scanner runs over the same raw text
@@ -114,12 +131,21 @@ crate/src/
   loses only its key paths. They are line scanners rather than parsers,
   which is what keeps the offsets the raw document's — and each states
   its own limits in its own module doc.
-- **The JSON reader is the only one allowed to resolve an escape.**
-  `\n` inside a JSON string is a line feed, so the word splitter breaks
-  there and `"Hello\nПривет"` is not a mixed word. Everywhere else the
-  bytes really are a Latin letter against Cyrillic and it stays a
-  finding. Do not extend this to a format whose grammar this crate does
-  not read.
+- **The JSON reader is the only one allowed to resolve an escape**, and
+  it is the **one** carve-out from the rule above. `\n` inside a JSON
+  string is a line feed, so the word splitter breaks there and
+  `"Hello\nПривет"` is not a mixed word. Everywhere else the bytes really
+  are a Latin letter against Cyrillic and it stays a finding. Do not
+  extend this to a format whose grammar this crate does not read.
+
+  `escape_spans` is the only reader output that reaches a scanner rather
+  than a key path, which is what makes it the only way a reader can move
+  a finding. Two tests hold the pair:
+  `a_format_never_changes_which_findings_exist` says no reader changes
+  anything on a document with no escape in it, and
+  `only_the_json_reader_may_resolve_an_escape` says JSON alone changes
+  anything on a document that has one. The first cannot see the second's
+  document, so a reader that grew its own escape rule would pass it.
 - **Column lookups are checkpointed, not counted from the line start.**
   `detect/position.rs` carries a checkpoint every kilobyte, empty for an
   ASCII document. Without them a minified bundle — one line, one lookup
@@ -226,10 +252,12 @@ The bar, enforced by review:
   tests that drive the built binary against a temporary tree. A new
   refusal adds its case there.
 - **Anything needing a document larger than an editor opens is
-  `tests/scenarios.rs`**, gated behind `UNICODE_LE_SCENARIOS`. A skipped
-  scenario is never reported as a pass; each one says plainly that it
-  did not run. **No CI job sets that variable today** — see the root
-  AGENTS.md's known limitations.
+  `tests/scenarios.rs`**, gated behind `UNICODE_LE_SCENARIOS` and run by
+  the `scenarios` CI job, which is what sets it. A skipped scenario is
+  never reported as a pass: a bare `cargo test` prints `SKIPPED` and the
+  reason for each one. A gated tier nothing sets is a tier that has never
+  run, and a sibling shipped one asserting a shape the code had stopped
+  producing.
 - **Four hardening tiers, each because something real got through a green
   suite**, each with its own CI job and each naming the bug it would have
   caught: `tests/hazards.rs` (a real filesystem), `tests/platform.rs` (a
@@ -281,3 +309,20 @@ UNICODE_LE_BUDGET=1 cargo test --locked --test budget -- --test-threads=1 --noca
 A change is not done because it compiles; it is done when it is tested,
 linted, documented where behavior changed (README / CHANGELOG / SPEC /
 this file), and honest — claims in docs must match the code.
+
+## Git identity and commits
+
+The repository root's conventions apply unchanged, and the root
+[AGENTS.md](../AGENTS.md) is where they are written down: the GitHub
+noreply address on every commit, a conventional prefix, an imperative
+subject under 72 characters with no trailing period, and a body carrying
+the *why*. The `commit-msg` hook in `.githooks/` rejects a bad subject
+before the commit exists; point git at it once per clone with
+`git config core.hooksPath .githooks`. No CI job runs the same check yet,
+so `--no-verify` avoids it rather than delaying it.
+
+One concern per change. If a doc describes the thing you changed —
+README, CHANGELOG, SPEC.md or this file — it moves in the same commit.
+Release tags are `crate-v*`, and a release goes out by dispatching
+`release-crate.yml` with its publish opt-in, never by pushing a tag: a
+crates.io version can never be reused.

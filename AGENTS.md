@@ -230,7 +230,7 @@ what keeps the next person from "simplifying" it back into a defect.
 
 ## Testing
 
-The default suite runs everywhere on every push. Five further tiers run
+The default suite runs everywhere on every push. Six further tiers run
 in CI, and **each exists because something real got through a green
 suite**; each names the bug it would have caught.
 
@@ -241,13 +241,17 @@ suite**; each names the bug it would have caught.
 | `platform` | a second operating system: separators, case folding, reserved device names, CRLF against a lone CR, stdin closing early, `TZ` set and unset | `crate/tests/platform.rs` |
 | `fuzz` | text nobody would type, time-boxed and seeded | `crate/tests/fuzz.rs` |
 | `budget` | a clock: a wall-clock ceiling plus linearity in both directions | `crate/tests/budget.rs` |
+| `scenarios` | a document far larger than an editor opens | `crate/tests/scenarios.rs` |
 | `coverage-matrix` | whether every format reader, `kind`, `severity` and `reason` is reachable from a real fixture | `crate/src/detect/corpus.rs` |
 
 Rules that hold across all of them:
 
 - **A skipped case is never reported as a pass.** `hazards` and
   `platform` name every case the platform cannot express on stderr;
-  `budget` and `scenarios` say plainly that they did not run.
+  `budget` and `scenarios` say plainly that they did not run. **A gated
+  tier that no job sets is a tier that has never run** — a sibling
+  shipped a scenarios suite asserting a shape the code had stopped
+  producing — so every gate above has the job that turns it on.
 - **The tree is built at runtime**, not checked in: Windows cannot hold a
   FIFO, a permission-denied file, or half of these names in git.
 - **A marker line is not decoration.** `cargo test <filter>` exits 0 when
@@ -425,8 +429,17 @@ enforced by review until that job exists.
   backslash is an ordinary character where `C:\Привет` is a path.
   Resolving it needs a grammar that says so, and this crate has one for
   JSON and for nothing else it reads. `--kind` narrows it away.
-- **`tests/scenarios.rs` has no CI job.** It is gated behind
-  `UNICODE_LE_SCENARIOS` and nothing in `ci-crate.yml` sets it, so those
-  four cases skip on every run. They say so by name rather than passing
-  silently, and `hazards` and `budget` now cover the same shapes with
-  assertions, but the tier is currently ornamental.
+- **A compatibility form inside a mixed word is not reported as a
+  `confusable`.** `scripts::judge` answers a word that mixes an
+  undeclared script with Latin by returning the `mixed-script` finding
+  and its homoglyphs, and never reaches the compatibility check below —
+  so `設ＦＩＬＥ` in an otherwise Latin file is one `mixed-script`
+  finding undeclared and four `confusable` ones under `--script Han`.
+  Nothing is missed at the level of "is this word flagged", both being
+  `high`, but `--kind confusable` answers nothing on that word until a
+  script is declared, which is the opposite of the direction declaring is
+  supposed to move a check. It also sits against SPEC.md's "a
+  compatibility form is not a script question and is reported either
+  way". **Unresolved: whether the compatibility check should run on a
+  mixed word as well, or the claim should be narrowed to the axis it was
+  written about.**
