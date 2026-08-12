@@ -417,6 +417,20 @@ fn version_and_help_exit_clear() {
     );
 }
 
+/// **The report-safety rule reaches the help text too.** `--help` and
+/// `--version` write straight to stdout with nothing between, so they are
+/// the one output path no escape covers — and the usage text held an em
+/// dash. Asserted at the process boundary as well as on the constant,
+/// because what matters is the bytes a caller receives.
+#[test]
+fn help_and_version_write_nothing_but_ascii() {
+    for args in [vec!["--help"], vec!["--version"], vec!["-h"], vec!["-V"]] {
+        let run = run(&args);
+        assert!(run.stdout.is_ascii(), "{args:?}: {}", run.stdout);
+        assert!(run.stderr.is_ascii(), "{args:?}: {}", run.stderr);
+    }
+}
+
 #[test]
 fn a_document_on_stdin_is_scanned() {
     let mut child = Command::new(BINARY)

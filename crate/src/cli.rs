@@ -23,7 +23,7 @@ Source bidirectional controls, invisibles, homoglyphs, words that mix
 scripts, text that is not in NFC, spaces that are not the space, and
 codepoints with no assigned meaning.
 
-It reports codepoints, never the characters themselves — a report that
+It reports codepoints, never the characters themselves: a report that
 quoted them would carry the attack to whoever read it. It never rewrites
 a file: what form your text is in is reported, not corrected.
 
@@ -52,6 +52,11 @@ Exit codes: 0 clean, 1 findings, 2 the question was malformed.";
 /// Every flag the parser accepts. Held equal to the flags named in USAGE
 /// by a test, and consulted at runtime so the list is what the parser
 /// actually honours.
+///
+/// USAGE itself is held to ASCII by a test as well. `--help` writes it to
+/// stdout with nothing between, so an em dash typed into it is a non-ASCII
+/// byte on the protocol stream — the one thing this tool promises never to
+/// emit, reached through the one string nothing escapes.
 const FLAGS: [&str; 7] = [
     "--kind",
     "--script",
@@ -414,6 +419,26 @@ mod tests {
                 "{attempt} was accepted"
             );
         }
+    }
+
+    /// **The regression.** `--help` prints USAGE to stdout with nothing
+    /// between, and USAGE held an em dash — a non-ASCII byte on the
+    /// protocol stream, from the one string in the output that nothing
+    /// escapes. Every other path is covered: findings are `U+XXXX` and
+    /// prose held to ASCII by `detect::hazards`, and the two fields this
+    /// crate does not author go through `escape`.
+    #[test]
+    fn the_usage_text_is_ascii_because_help_prints_it_unescaped() {
+        assert!(
+            USAGE.is_ascii(),
+            "USAGE reaches stdout verbatim: {}",
+            USAGE
+                .chars()
+                .filter(|c| !c.is_ascii())
+                .map(|c| format!("U+{:04X}", c as u32))
+                .collect::<Vec<String>>()
+                .join(" ")
+        );
     }
 
     #[test]
