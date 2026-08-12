@@ -71,6 +71,23 @@ jobs:
             echo 'Inline #[allow] found — fix the lint or relax it in [lints.clippy] in crate/Cargo.toml.'
             exit 1
           fi
+      # The two frontends share one MCP tool and nothing else. A doc that
+      # says the crate must reproduce the extension's output re-imposes
+      # the constraint the surfaces were deliberately freed from — and it
+      # spreads, because the next SPEC.md gets written from a sibling.
+      - name: Forbid a doc holding the two surfaces equal
+        working-directory: .
+        run: |
+          hits=$(grep -rniE \
+            'difference is a regression|reproduces its output exactly|is the reference implementation for' \
+            --include='*.md' . 2>/dev/null | grep -vE '/target/|CHANGELOG\.md' || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"
+            echo
+            echo 'Only the shared MCP tool is held equal. The surfaces are IDE-first'
+            echo 'and terminal-first and are meant to differ — say which one you mean.'
+            exit 1
+          fi
 
   # AGENTS.md sets a 90% line coverage floor per module for detect/.
   # Enforced per module, not on the total: a total hides one module sliding
@@ -265,15 +282,17 @@ jobs:
 
   # Does the crate open what it claims?
   #
-  # The extractor crates in this family answer that with one fixture per
-  # extension in their alias table. **This crate has no format table** —
-  # it reads every text file and has no opinion about the name — so the
-  # job is adapted rather than dropped: what it publishes instead is a
-  # vocabulary, and every `kind`, `severity` and `reason` in it is a
-  # claim that this tool can produce that value. Each must be reachable
-  # from a real fixture, because a value nothing reaches inflates what
-  # the tool says it covers and makes a consumer handle a case that never
-  # arrives.
+  # Two halves. The **format readers** are the sibling crates' question,
+  # asked the same way: every format the tool schema offers must have a
+  # real fixture that is read as it and comes back carrying a key path.
+  # That one matters more here than it looks, because a lost key path
+  # costs no finding by design — which is exactly what would let a reader
+  # stop naming anything and still pass every other test in the suite.
+  #
+  # The **vocabulary** is this crate's own: every `kind`, `severity` and
+  # `reason` is a claim that the tool can produce that value, and a value
+  # nothing reaches inflates what the tool says it covers and makes a
+  # consumer handle a case that never arrives.
   #
   # The marker check is not decoration: `cargo test <filter>` exits 0
   # when the filter matches nothing, so a renamed test would pass this
@@ -285,12 +304,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
           toolchain: stable
-      - name: Every kind, severity and refusal reason
+      - name: Every format reader, kind, severity and refusal reason
         shell: bash
         run: |
           set -euo pipefail
           cargo test --locked --bins coverage_matrix -- --nocapture 2>&1 \
             | tee "$RUNNER_TEMP/coverage-matrix.txt"
+          grep -q 'coverage-matrix: 7 format readers reachable from fixtures' \
+            "$RUNNER_TEMP/coverage-matrix.txt"
           grep -q 'coverage-matrix: 7 kinds reachable from fixtures' \
             "$RUNNER_TEMP/coverage-matrix.txt"
           grep -q 'coverage-matrix: 3 severities reachable from fixtures' \
