@@ -101,6 +101,15 @@ unfixed code:
 - The `intentional_script_context` share was counted over every non-Latin
   letter and attributed to the undeclared scripts alone, so declaring a
   script refused the file it was meant to unlock.
+- A JSON escape span could end inside a character. An escape's width is
+  counted in bytes, and a malformed document can put a multi-byte
+  character inside one (`"\П"`), so the raw arithmetic ended a range
+  mid-character. **No answer moves** — `scripts::in_escape` only compares
+  these against character offsets, and no boundary falls between a split
+  end and the next one — but the range is a `Range<usize>` over a `&str`,
+  it looks sliceable, and the day something slices with one it panics on
+  a document a caller supplied. Rounded up to the next boundary, with a
+  test that slices every span it produces.
 - The `intentional_script_context` share multiplied two `usize` counts,
   which overflows on a 32-bit target at a file of roughly 43 million
   letters — a 43 MB file of text, well inside what a repository holds.

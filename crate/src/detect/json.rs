@@ -147,7 +147,7 @@ pub(crate) fn escape_spans(text: &str) -> Vec<std::ops::Range<usize>> {
             at += 1;
             continue;
         }
-        at = escapes_in_string(bytes, at + 1, &mut spans);
+        at = escapes_in_string(text, at + 1, &mut spans);
     }
     spans
 }
@@ -156,7 +156,8 @@ pub(crate) fn escape_spans(text: &str) -> Vec<std::ops::Range<usize>> {
 /// quote, answering the offset just past its closing one. An unterminated
 /// string runs to the end of the document, which is the same reading a
 /// person gets by looking at it.
-fn escapes_in_string(bytes: &[u8], from: usize, spans: &mut Vec<std::ops::Range<usize>>) -> usize {
+fn escapes_in_string(text: &str, from: usize, spans: &mut Vec<std::ops::Range<usize>>) -> usize {
+    let bytes = text.as_bytes();
     let mut at = from;
     while at < bytes.len() {
         match bytes[at] {
@@ -171,13 +172,34 @@ fn escapes_in_string(bytes: &[u8], from: usize, spans: &mut Vec<std::ops::Range<
                 } else {
                     2
                 };
-                spans.push(at..(at + width).min(bytes.len()));
-                at += width;
+                let end = boundary_at_or_after(text, (at + width).min(bytes.len()));
+                spans.push(at..end);
+                at = end;
             }
             _ => at += 1,
         }
     }
     bytes.len()
+}
+
+/// `offset`, or the next character boundary after it.
+///
+/// **An escape's width is counted in bytes, and a malformed document can
+/// put a multi-byte character inside one** — `"\П"` is a backslash and
+/// two bytes of Cyrillic — so a raw `at + width` can land inside a
+/// character. Nothing notices today: `scripts::in_escape` only compares
+/// these ranges against character offsets, which are boundaries
+/// themselves, and no boundary falls between a split end and the next
+/// one, so the answer is identical either way. What changes is that the
+/// next person to reach for these ranges can slice with them. A range
+/// ending mid-character is a panic waiting for a caller, and rounding it
+/// up costs nothing.
+fn boundary_at_or_after(text: &str, offset: usize) -> usize {
+    let mut end = offset;
+    while end < text.len() && !text.is_char_boundary(end) {
+        end += 1;
+    }
+    end
 }
 
 /// The byte range between the quotes, and the offset just past the
@@ -347,6 +369,53 @@ mod tests {
     fn a_truncated_escape_stops_at_the_end_of_the_document() {
         assert_eq!(escaped(r#"{"a":"x\u00"#), [r"\u00"]);
         assert_eq!(escaped(r#"{"a":"x\"#), [r"\"]);
+    }
+
+    /// **Every span is sliceable.** An escape's width is counted in bytes
+    /// and a malformed document can put a multi-byte character inside one
+    /// — `"\П"` is a backslash and two bytes of Cyrillic — so the raw
+    /// arithmetic can end a range inside a character. `in_escape` only
+    /// ever compares these numerically and does not care, which is
+    /// exactly what makes it a trap: the range is a `Range<usize>` over a
+    /// `&str`, it looks sliceable, and the day someone slices with one it
+    /// panics on a document a caller supplied.
+    #[test]
+    fn every_escape_span_falls_on_character_boundaries() {
+        for text in [
+            "{\"a\":\"x\\\u{41f}\u{440}y\"}",
+            "{\"a\":\"\\\u{1d41a}\"}",
+            "{\"a\":\"\\u\u{4e2d}\u{6587}\u{65e5}\u{672c}\"}",
+            "{\"a\":\"\\\u{4e2d}",
+            "{\"\u{202e}\":\"\\\u{202e}\"}",
+            "\"\\",
+            "\"\\u",
+            r#"{"a":"x\ny","b":"p\tq\u0041r"}"#,
+        ] {
+            for span in escape_spans(text) {
+                assert!(
+                    text.is_char_boundary(span.start) && text.is_char_boundary(span.end),
+                    "{span:?} is not sliceable over {text:?}"
+                );
+                assert!(span.start < span.end && span.end <= text.len(), "{span:?}");
+                // The claim, made rather than assumed: it slices.
+                let _ = &text[span];
+            }
+        }
+    }
+
+    /// And rounding the end up changes no answer, because `in_escape` is
+    /// asked about character offsets and there is no boundary between a
+    /// split end and the next one.
+    #[test]
+    fn rounding_an_escape_span_up_moves_no_word_boundary() {
+        let text = "{\"a\":\"Hello\\\u{41f}\u{440}\u{438}\u{432}\u{435}\u{442}\"}";
+        let spans = escape_spans(text);
+        assert_eq!(spans.len(), 1);
+        // The backslash and the whole Cyrillic letter after it.
+        assert_eq!(&text[spans[0].clone()], "\\\u{41f}");
+        // Which is what the word splitter already behaved as though it
+        // covered: the scripts never touch, so nothing is reported.
+        assert!(super::super::scripts::scan(text, &[], &spans).is_empty());
     }
 
     #[test]
