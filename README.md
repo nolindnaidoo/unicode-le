@@ -1,0 +1,271 @@
+<h1 align="center">Unicode-LE: The Characters That Are Not What They Look Like</h1>
+<p align="center">
+  <b>Scan a tree for the Unicode that hides meaning — and never see it quoted back at you</b><br/>
+  <i>Trojan Source bidi controls, invisibles, homoglyphs, mixed scripts, non-NFC text, spaces that are not the space</i>
+</p>
+
+<p align="center">
+  <a href="https://letools.dev/tools/unicode-le">
+    <img src="https://img.shields.io/badge/LE%20Tools-letools.dev-blue?style=for-the-badge" alt="LE Tools" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="MIT licensed" />
+  </a>
+</p>
+
+---
+
+A right-to-left override that makes a reviewer read an `if` guard that is
+not there. A Cyrillic `а` in `pаypal`. A zero-width space between two
+strings that a hash says are different and a person says are the same. A
+no-break space where a `split(' ')` expects a space.
+
+One command over a whole tree. Nothing is rewritten, and **nothing it
+finds is ever quoted back at you** — findings carry `U+XXXX`, never the
+character, because a report that pasted a bidi control would reorder the
+terminal, the diff and the pull request of whoever read it.
+
+## Sixty seconds
+
+```
+$ unicode-le .
+./README.md:1:9  [low] unusual-whitespace U+00A0  no-break space: renders like a
+  space and is not one, so a trim, a split or a comparison against U+0020 does
+  not see it
+./src/auth.ts:1:7  [high] mixed-script U+0430  one word written in Cyrillic and
+  Latin: no single script accounts for it, which is how a name that reads as
+  familiar is forged
+./src/auth.ts:1:8  [high] confusable U+0430  a Cyrillic character in a word that
+  is not Cyrillic, and it reduces to the codepoint under `resembles`: the two
+  are indistinguishable on screen
+./src/render.ts:1:16  [high] bidi-control U+202E  right-to-left override: a
+  bidirectional control reorders how the rest of the line renders, so the text
+  a reviewer reads is not the text that runs
+4 findings in 4 files
+```
+
+(Long lines wrapped here for the page; the tool writes one line per
+finding. The file order is the walk's, which is sorted, so two runs over
+an unchanged tree produce the same bytes.)
+
+stdout is one JSON document; stderr is what you see above.
+
+```bash
+# in CI, for the CVE and nothing else:
+unicode-le --fail-on bidi .
+```
+
+## Install
+
+**Not published yet.** `cargo install unicode-le` is what it will be; today
+it builds from source:
+
+```bash
+git clone https://github.com/nolindnaidoo/unicode-le
+cd unicode-le/crate
+cargo build --release
+./target/release/unicode-le --help
+```
+
+There is no VS Code extension beside it yet either. When one lands,
+`crate/fixtures/` becomes the contract between the two frontends the way
+it is in the sibling repos.
+
+## It runs on internationalised code without drowning you
+
+This is the part that decides whether the tool survives contact with a
+real repository. A naive confusable check flags every letter of every
+Russian and Chinese string in your tree — thousands of findings on
+exactly the codebases that most need the check, so it gets switched off,
+and the Trojan Source screen goes off with it.
+
+**A word is judged, never a file.** `Привет` is wholly Cyrillic and is
+Russian. The Cyrillic `а` in `pаypal` sits in a word that is otherwise
+Latin, and only that one is a finding. Japanese mixes Han, Hiragana and
+Katakana in one word constantly, and UTS #39 knows that is Japanese.
+
+**A file plainly written in another script is refused, not guessed at.**
+Your `zh-CN.json` gets a refusal saying the confusable check did not run
+on it and why — not four hundred findings. Every other check still did.
+
+**Naming the script judges it properly.** `--script Han` says Han is
+expected here, so a Latin product name inside a Chinese string is a
+translation rather than a finding — while a Cyrillic letter in a Latin
+word *in that same file* is still caught. Declaring is how you turn the
+check on, never how you turn it off.
+
+Run against two real locale trees — 37 files across 25 languages,
+Cyrillic, Greek, Han, Hiragana, Katakana and Hangul:
+
+| | findings |
+|---|---|
+| no script declared | **0** |
+| `--script Han,Hiragana,Katakana,Hangul,Cyrillic,Greek` | **0** |
+
+Both numbers matter. The second says the checks *ran* and found nothing.
+
+## It never rewrites your files
+
+No `--fix`. No normalization. No stripping. The form your text is in is
+**reported**; what to do about it is a decision with context this tool
+does not have — your NFD fixture may be NFD on purpose, and a test that
+pins a decomposed sequence breaks the moment something helpfully
+composes it.
+
+It also cannot prove text safe. A confusable pair added after Unicode
+16.0 is not in the tables it stands on. Silence is not a clearance.
+
+## What it finds
+
+| kind | severity | what |
+|---|---|---|
+| `bidi-control` | high | The Trojan Source class, [CVE-2021-42574](https://trojansource.codes/). U+202A–U+202E, U+2066–U+2069, U+061C. |
+| `confusable` | high | A homoglyph: Cyrillic `а` for `a`, Greek `ο` for `o`, full-width `Ｆ`, mathematical `𝐚`. Reports what it resembles. |
+| `mixed-script` | high | One word that no single script accounts for, under UTS #39's resolved script set. |
+| `invisible` | medium | Zero-width space, joiner and non-joiner, word joiner, soft hyphen, an interior BOM, the Mongolian vowel separator. |
+| `unassigned-or-private-use` | medium | Private-use, unassigned, noncharacter. |
+| `non-nfc` | low | A line that is not in Normalization Form C, with the form it is in. |
+| `unusual-whitespace` | low | No-break space, ideographic space, and the rest of the spaces that are not the space. |
+
+Severity does not rank `bidi-control` above the other two highs — three
+levels cannot say "this one is the CVE". `--fail-on bidi` does.
+
+Every finding carries a file, a 1-based line and **UTF-16 column** (what
+your editor's ruler shows), a byte offset, the codepoints as `U+XXXX`,
+the scripts involved and a severity. Confusables also carry `resembles`.
+
+## It refuses rather than guessing
+
+A refusal is a first-class result, not an error: the run carries on, and
+nothing is reported clean that was never looked at.
+
+| reason | when | what still ran |
+|---|---|---|
+| `binary_or_undecodable` | a NUL byte in the first 8 KB, bytes that are not UTF-8, or a file it could not read | nothing |
+| `encoding_unknown` | a UTF-16 or UTF-32 byte-order mark | nothing |
+| `intentional_script_context` | at least 10% of the letters belong to an **undeclared** non-Latin script | everything except the confusable and mixed-script checks |
+
+**No encoding is ever guessed.** Read a UTF-16 file as UTF-8 and every
+second byte looks like a NUL: a tool that guessed would report a file
+full of invisible and unassigned characters that are not in it. A
+confident, detailed, fabricated answer is the worst thing a security
+screen can produce.
+
+`summary.unexamined` counts the files where **nothing** was read, which
+is a different number from `summary.refusals` — a file refused for its
+script context was still screened for bidi controls and invisibles.
+
+Refusals do not fail the run. `--strict` makes them exit 2, for a
+pipeline that wants to insist the scan covered what it was pointed at.
+
+## Exit codes are the API
+
+- **0** — clean.
+- **1** — at least one finding that `--fail-on` counts.
+- **2** — the question was malformed: an unknown flag, an unknown kind or
+  script, a path that does not exist. Also `--strict` with any refusal.
+
+## Options
+
+```
+usage: unicode-le [options] <file|dir>...
+       unicode-le [options] --stdin
+       unicode-le mcp
+       unicode-le --version | --help
+
+  --kind <kind>     bidi, invisible, confusable, mixed-script, non-nfc,
+                    whitespace, unassigned (repeatable, comma-separated)
+  --script <tag>    a non-Latin script this tree is expected to contain,
+                    by Unicode name or ISO 15924 tag: Han, Cyrillic, Hani
+  --fail-on <what>  any (default) or bidi
+  --strict          exit 2 if any file was refused
+  --stdin           read one document from stdin
+  --hidden          walk hidden files and directories too
+  --no-ignore       walk files that .gitignore excludes
+```
+
+Every text file is walked — there is no format filter, because a bidi
+control is a bidi control in a `.md`, a `.json` and a file with no
+extension. A directory is walked the way ripgrep walks one; a file named
+explicitly is always read.
+
+## As an MCP server
+
+```bash
+unicode-le mcp
+```
+
+Two tools over stdio:
+
+- **`detect_unicode_risks`** — a document in, findings out. No
+  filesystem. Worth pointing at explicitly: a model that reads a file
+  itself has already swallowed the bidi controls in it. What comes back
+  from here is `U+XXXX` and English, so the answer cannot carry the
+  attack into a commit message or a review comment.
+- **`unicode_le_scan`** — files or directories in, the same report the
+  CLI writes.
+
+Both return `{ ok, data, diagnostics, meta }`, where `ok` means the check
+ran — never that the answer was yes. Refusals speak the caller's
+vocabulary: an MCP caller has no command line, so no message on that
+surface names a flag, and a test asserts none contains `--`.
+
+## What it stands on
+
+[`unicode-security`](https://crates.io/crates/unicode-security) (UAX #39
+— confusable skeletons, script sets, mixed-script detection),
+[`unicode-script`](https://crates.io/crates/unicode-script) (UAX #24) and
+[`unicode-normalization`](https://crates.io/crates/unicode-normalization)
+(UAX #15), all from unicode-rs, plus `ignore` for the walk. UAX #39 is a
+data standard and its tables move with every Unicode release; copying
+them into this crate would be a maintenance debt, not a feature. What
+this crate adds is the layer none of them have: walking a tree, refusing
+an encoding, locating a risk at a line and column, and knowing when not
+to answer. See [`crate/SPEC.md`](crate/SPEC.md).
+
+## Development
+
+```bash
+cd crate
+cargo fmt --all --check
+cargo clippy --all-targets -- -D warnings
+cargo test --locked
+```
+
+Beyond the default suite, five hardening tiers run in CI — `hazards`,
+`platform`, `fuzz`, `budget` and `coverage-matrix`. Each exists because
+something real got through a green suite; see
+[AGENTS.md](AGENTS.md#testing). Architecture and conventions live in
+[AGENTS.md](AGENTS.md) and [`crate/AGENTS.md`](crate/AGENTS.md); the
+behavioural contract is [`crate/SPEC.md`](crate/SPEC.md). Changes are
+tracked in [CHANGELOG.md](CHANGELOG.md).
+
+## More from the LE Family
+
+Every tool in the family, one page: **[letools.dev](https://letools.dev)**
+
+- **[Paths-LE](https://letools.dev/tools/paths-le)** - Extract file paths from JS/TS imports, JSON, HTML, CSS, TOML, CSV, and .env
+- **[String-LE](https://letools.dev/tools/string-le)** - Extract string values for i18n from JSON, YAML, CSV, TOML, INI, and .env
+- **[Numbers-LE](https://letools.dev/tools/numbers-le)** - Extract numeric values from JSON, YAML, CSV, TOML, INI, and .env
+- **[EnvSync-LE](https://letools.dev/tools/envsync-le)** - Spot missing keys across your .env files, with a markdown report
+- **[Regex-LE](https://letools.dev/tools/regex-le)** - Find, test, and validate regular expressions with ReDoS screening
+- **[Secrets-LE](https://letools.dev/tools/secrets-le)** - Detect and sanitize credentials locally, before you commit
+- **[Colors-LE](https://letools.dev/tools/colors-le)** - Extract and analyze colors from CSS, SCSS, LESS, Stylus, HTML, JS/TS, and SVG
+- **[URLs-LE](https://letools.dev/tools/urls-le)** - Extract URLs from documentation, configs, and code
+- **[Dates-LE](https://letools.dev/tools/dates-le)** - Extract and analyze dates from logs, configs, and code
+- **[Scrape-LE](https://letools.dev/tools/scrape-le)** - Load a URL in headless Chromium and see what will block your scraper
+
+## Also by nolindnaidoo
+
+**Rust** — pixelcoords and pixelactions are one loop: pixelcoords answers *where*, pixelactions *acts* there.
+
+- **[pixelcoords](https://github.com/nolindnaidoo/pixelcoords)** — Freeze your screen, mark regions, get pixel-exact coordinates and crops
+  [pixelcoords.dev](https://pixelcoords.dev) · [crates.io](https://crates.io/crates/pixelcoords) · [docs.rs](https://docs.rs/pixelcoords)
+- **[pixelactions](https://github.com/nolindnaidoo/pixelactions)** — Consume human-verified coordinates, perform the interaction, confirm it landed
+  [pixelactions.dev](https://pixelactions.dev) · [crates.io](https://crates.io/crates/pixelactions)
+
+**Contact Developer** — [nolindnaidoo.com](https://nolindnaidoo.com) · [GitHub](https://github.com/nolindnaidoo) · [LinkedIn](https://www.linkedin.com/in/nolindnaidoo/)
+
+## License
+
+MIT © [nolindnaidoo](https://github.com/nolindnaidoo) — see [LICENSE](LICENSE).

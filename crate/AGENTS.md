@@ -81,6 +81,25 @@ crate/src/
   narrowing that keeps it honest: mixing with an *undeclared* script is
   still a finding in the same file, and a compatibility form is not a
   script question and is reported either way.
+- **Declaring turns the checks on, never off.** The refusal share is
+  measured over the **undeclared** scripts alone, over every letter in
+  the file. Measuring all non-Latin letters and then naming only the
+  undeclared scripts refused a file the caller had already accounted for
+  — so declaring the script a repository is written in disabled the
+  homoglyph and mixed-script checks for every file in it, which is
+  exactly where a homoglyph would be hiding. The refusal message is
+  conditional for the same reason: telling a caller no script was
+  declared when one was is false.
+- **Paths in the report use `/` on every platform.** `scan::report_path`
+  is the one place that decides it, and `tests/platform.rs` asserts it. A
+  refusal naming a caller-supplied path is the exception and echoes it
+  verbatim, because a message that rewrites its path cannot be grepped
+  for.
+- **Column lookups are checkpointed, not counted from the line start.**
+  `detect/position.rs` carries a checkpoint every kilobyte, empty for an
+  ASCII document. Without them a minified bundle — one line, one lookup
+  per finding — is quadratic: 20,000 findings measured 21.8s before and
+  0.33s after.
 - **Nothing is rewritten.** No `--fix`, no normalization, no stripping.
   Contract tests assert no flag and no tool schema offers it, and that a
   scanned file is byte-identical afterwards.
@@ -184,7 +203,21 @@ The bar, enforced by review:
 - **Anything needing a document larger than an editor opens is
   `tests/scenarios.rs`**, gated behind `UNICODE_LE_SCENARIOS`. A skipped
   scenario is never reported as a pass; each one says plainly that it
-  did not run.
+  did not run. **No CI job sets that variable today** — see the root
+  AGENTS.md's known limitations.
+- **Four hardening tiers, each because something real got through a green
+  suite**, each with its own CI job and each naming the bug it would have
+  caught: `tests/hazards.rs` (a real filesystem), `tests/platform.rs` (a
+  second operating system), `tests/fuzz.rs` (text nobody would type,
+  time-boxed and seeded), `tests/budget.rs` (a wall-clock ceiling and
+  linearity in both directions). The `coverage_matrix_*` tests in
+  `detect/corpus.rs` are the fifth: every `kind`, `severity` and `reason`
+  reachable from a real fixture. They print marker lines because
+  `cargo test <filter>` exits 0 when the filter matches nothing, and CI
+  greps for them.
+- **A regression test's failure is observed, not assumed.** Revert the
+  fix, watch the test go red, restore it. The quadratic in
+  `position.rs` was proved that way: 13.02x against a 6x limit.
 - **Every table entry carries its test.** A character in `characters.rs`
   that no test classifies is a silently dead row, and
   `every_table_entry_classifies` fails on one.
@@ -208,6 +241,14 @@ cargo fmt --all --check
 cargo clippy --all-targets -- -D warnings
 cargo test --locked
 UNICODE_LE_SCENARIOS=1 cargo test --locked
+```
+
+And when `detect/` or `scan.rs` changed, the two tiers the default suite
+runs only at their smallest setting:
+
+```bash
+UNICODE_LE_FUZZ_SECONDS=60 cargo test --locked --test fuzz -- --test-threads=1 --nocapture
+UNICODE_LE_BUDGET=1 cargo test --locked --test budget -- --test-threads=1 --nocapture
 ```
 
 A change is not done because it compiles; it is done when it is tested,
