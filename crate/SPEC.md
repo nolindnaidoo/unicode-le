@@ -82,6 +82,36 @@ this crate. There is no field holding source text and no context line,
 and `detect::hazards` asserts over the whole corpus that a serialized
 report is pure ASCII.
 
+**Two fields are not written by this crate**, and they are the ones that
+made the rule incomplete: `file` is the path the caller supplied, and
+`key` is text out of the document being scanned. Both must be carried
+exactly — a path has to open, and a key path has to match the reader's
+own document — so neither can be rewritten.
+
+They are **escaped rather than rewritten**: every non-ASCII codepoint in
+anything this tool prints is emitted as `\uXXXX`. Because that is JSON's
+own escape, both halves hold at once.
+
+- **Inert on the wire.** The raw bytes of stdout, of an MCP frame, of a
+  diff or of a pull request contain no character that can reorder
+  anything. A repository holding a file named `invoice`, U+202E,
+  `fdp.ts` used to produce a report that reordered the terminal of
+  whoever read it.
+- **Unchanged for a machine.** A parser decodes the escape back to the
+  identical string, so the path in the report still opens the file it
+  names and the key still matches the document.
+
+The escape is applied to the *serialized document*, not to the field.
+Escaping first does not survive serialization: `serde_json` escapes the
+backslash it finds, and the value ships as `\\u202E` and parses back as
+six literal characters. Applying it afterwards is sound because JSON's
+own syntax is ASCII — a non-ASCII codepoint can only occur inside a
+string literal, which is exactly where `\uXXXX` is defined. Astral
+codepoints become a surrogate pair, because the escape is sixteen bits.
+
+On stderr the same spelling is used, so a path or a key in the human
+summary can be grepped for with the one in the report.
+
 This is specific to this tool and it is not fussiness. Every sibling can
 quote what it found, because a regex or a file path is inert on the
 page. Here it is not: a report that pasted a raw U+202E reorders the
@@ -99,7 +129,8 @@ homoglyph pasted into a ticket title.
 
 Seven kinds. Every finding carries `kind`, `severity`, `line`, `column`,
 `offset`, `codepoints`, `scripts`, and `detail`; confusables also carry
-`resembles`.
+`resembles`, and a finding in a document whose format is readable also
+carries `key`.
 
 | kind | severity | what |
 |---|---|---|
@@ -143,6 +174,75 @@ reasons apart in the message.
 no-break space is the same character in a Chinese file as in an English
 one. `--kind` is how a caller who wants only the security screen
 narrows it.
+
+---
+
+## Key paths
+
+A line and a column point at a place in a file. `metrics.headline.eyebrow`
+points at a place in the **document**, and for the file this tool is most
+often aimed at — a five-thousand-line locale catalogue — that is the
+difference between a finding somebody can act on and a line number they
+have to go and look up.
+
+Where the format is readable, a finding carries `key`. Where it is not,
+the field is **absent** — not empty, because a consumer branching on
+presence would take one for the other.
+
+| format | resolved from | key path looks like |
+|---|---|---|
+| `json` | `.json`, `.jsonc` | `metrics.headline.eyebrow`, `rows.[2].id` |
+| `yaml` | `.yaml`, `.yml` | `service.display.label`, `items.[0].name` |
+| `toml` | `.toml` | `server.limits.note` |
+| `ini` | `.ini`, `.cfg`, `.conf`, `.properties` | `database.host` |
+| `env` | `.env` | `API_HOST` |
+| `csv` | `.csv`, `.tsv` | the column's header name, or `[3]` |
+| `text` | everything else | absent |
+
+**The format decides how a finding is addressed and never whether it
+exists.** This is the inversion the whole layer rests on, and it is the
+opposite of what a format-aware *extractor* does: in `numbers-le` the
+format decides what counts, because `"42"` is a string in JSON and a
+number in `.env`. Nothing of that kind happens here — a right-to-left
+override is the same override however the file around it is punctuated.
+So a document whose format cannot be parsed, or whose extension nothing
+recognises, is still scanned and still reports every finding in it,
+without a key. A test runs one document through every reader and asserts
+the findings are identical each time.
+
+The readers are **line scanners, not parsers**. That keeps the offsets
+the raw document's, which is what the whole report is indexed by, and it
+means a truncated or invalid document still yields the key paths it did
+manage to read. Each reader's limits are written down in its own module:
+YAML flow style, anchors and multi-line scalars are not modelled; a TOML
+array spread over several lines has its key on the first; the index of a
+TOML array-of-tables is deliberately absent rather than guessed.
+
+Array elements are `[0]`, `[1]`, joined by the same rule as every other
+segment: `orders.[2].id`.
+
+An empty path is the document's root, which names nothing, and is
+reported as no key at all.
+
+### The escape-sequence false positive, resolved for JSON
+
+A backslash escape immediately followed by non-Latin text used to make a
+mixed word: `"Hello\nПривет"` contains the byte run `nПривет`, which is
+Latin `n` against Cyrillic with nothing between.
+
+**Inside a JSON string this is no longer reported**, because there the
+grammar settles it: `\n` is a line feed, so the `n` is not a letter and
+the two scripts never touch. The JSON reader hands the word splitter the
+byte ranges of the escape sequences it found, and no word is built
+across one. A `\uXXXX` escape is covered across all six characters, so
+the hex digits cannot glue two words together either.
+
+**In every other format it is still reported, and that is deliberate.**
+The bytes really are a Latin letter followed by Cyrillic; a backslash is
+an ordinary character in a `.txt` file, where `C:\Привет` is a path.
+Only a reader that knows the escape rule may resolve it, and nothing
+here guesses one. `--kind` narrows it away for a caller who only wants
+the security screen.
 
 ---
 
@@ -219,18 +319,19 @@ suppressed them.
 ### The one false positive left, written down
 
 A backslash escape immediately followed by non-Latin text makes a mixed
-word: in a Rust or JavaScript source file, `"Hello\nПривет"` contains
-the byte run `nПривет`, which is Latin `n` plus Cyrillic and is reported
-as `mixed-script`.
+word: in a Rust, JavaScript or Python source file, `"Hello\nПривет"`
+contains the byte run `nПривет`, which is Latin `n` plus Cyrillic and is
+reported as `mixed-script`.
 
-This is left alone deliberately. The bytes really are a Latin letter
-followed by Cyrillic with nothing between them; the tool has no language
-model and a backslash is an ordinary character in a `.txt` file, where
-`C:\Привет` is a path. Teaching the word splitter about escape sequences
-would mean guessing which language a file is in and which of its
-backslashes are escapes — exactly the guessing the rest of this
-specification refuses. `--kind` narrows it away for a caller who only
-wants the security screen.
+**It is resolved for JSON and left alone everywhere else** — see "The
+escape-sequence false positive, resolved for JSON" above. The bytes
+really are a Latin letter followed by Cyrillic with nothing between
+them; a backslash is an ordinary character in a `.txt` file, where
+`C:\Привет` is a path. Resolving it needs a grammar that says so, and
+this crate has one for JSON and for no other format it reads. Inferring
+which of a `.rs` file's backslashes are escapes would be exactly the
+guessing the rest of this specification refuses. `--kind` narrows it
+away for a caller who only wants the security screen.
 
 ---
 
@@ -292,6 +393,7 @@ accumulate those itself, slightly differently each time.
           "line": 2,
           "column": 8,
           "offset": 70,
+          "key": "auth.provider",
           "codepoints": ["U+0430"],
           "scripts": ["Cyrillic"],
           "resembles": ["U+0061"],
@@ -391,7 +493,10 @@ file named explicitly is always read.
   that pastes a document into its own reasoning has already been handed
   the bidi controls in it, and what comes back from here is `U+XXXX` and
   English, so the *answer* cannot carry the attack onward into a commit
-  message or a review comment.
+  message or a review comment. It takes `format` or `filename` — a
+  document arriving here has no name of its own, so one of those is the
+  only way to ask for key paths. Neither opens anything, and a name
+  nothing recognises costs the key paths and no findings.
 - **`unicode_le_scan`** — files or directories in, the same report the
   CLI writes.
 

@@ -48,6 +48,20 @@ UNICODE_LE_SCENARIOS=1 cargo test --locked --test scenarios
   character it found would be the delivery mechanism for the thing it detects.
   Doc comments may have them; anything reaching stdout or stderr may not. This
   has already broken once, and three test layers assert it.
+- **`file` and `key` are not written by this crate**, so they are escaped
+  rather than sanitised: `escape::json` on the serialized document, never on
+  the field, because `serde_json` escapes a backslash you added and the value
+  stops round-tripping. Both *must* round-trip — a path has to open and a key
+  has to match the document. `escape::text` is the stderr half.
+- **A format never changes which findings exist**, only how they are
+  addressed. If a change to `detect/locate.rs` or a reader alters a finding,
+  the change is wrong. `a_format_never_changes_which_findings_exist` is the
+  guard, and `coverage-matrix` is the other half: a lost key path costs no
+  finding, so a reader that stopped naming things passes everything else.
+- **Only the JSON reader may resolve an escape sequence.** `\n` inside a JSON
+  string is a line feed and breaks a word; a backslash in a `.txt` is an
+  ordinary character and `C:\Привет` is a path. Do not extend this to a
+  grammar the crate does not read.
 - **Declaring a script turns the checks ON.** The refusal share is measured
   over *undeclared* scripts only. Getting this backwards disabled the
   homoglyph check for every file in an internationalised repository, which is

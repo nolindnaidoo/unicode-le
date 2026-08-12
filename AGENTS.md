@@ -41,8 +41,10 @@ crate/
 ├── src/
 │   ├── detect/     pure: the character tables, the script rules, the
 │   │               normalization check, encoding, positions, codepoint
-│   │               rendering. No filesystem. 90% line coverage floor
-│   │               per module.
+│   │               rendering, and the per-format key-path readers
+│   │               (json, yaml, toml, ini, dotenv, csv behind locate.rs).
+│   │               No filesystem. 90% line coverage floor per module.
+│   ├── escape.rs   the one place a path or a key becomes inert
 │   ├── walk.rs     ignore-aware tree walking
 │   ├── scan.rs     one file end to end — the only path either surface calls
 │   ├── cli.rs      the terminal surface
@@ -154,6 +156,17 @@ what keeps the next person from "simplifying" it back into a defect.
   `detect::hazards` over the whole corpus, `tests/contracts.rs` at the
   process boundary on both streams, and `tests/fuzz.rs` on every
   generated document.
+- **Nothing this tool prints is ever non-ASCII, including the two fields
+  it does not author.** `file` is the caller's path and `key` is text out
+  of the document, so neither can be rewritten — a path has to open and a
+  key has to match. Both are **escaped** instead: every non-ASCII
+  codepoint is emitted as `\uXXXX`, which is JSON's own escape, so the
+  wire bytes are inert *and* a parser decodes them back byte for byte.
+  The exemption those two fields used to have is exactly what made a
+  hostile file name exploitable. `escape` is the one place that decides
+  it, applied to the **serialized document** — escaping the field first
+  does not survive `serde_json`, which escapes the backslash and ships
+  `\\u202E`.
 
   **Practical consequence: no em dashes, no curly quotes, no arrows in
   any `detail` or refusal string.** Doc comments may have them; anything
@@ -180,7 +193,22 @@ what keeps the next person from "simplifying" it back into a defect.
   report is diffed against one produced on another machine. `\` on
   Windows made every path differ for no reason a reader could see, in a
   sibling, for a whole release. `scan::report_path` is the one place that
-  decides this; asserted by `tests/platform.rs`.
+  decides this; asserted by `tests/platform.rs`. Separator, not encoding:
+  the escaping above is a different rule and the two do not collide.
+- **A format decides how a finding is addressed, never whether it
+  exists.** This is the inversion the whole `detect/locate.rs` layer
+  rests on, and it is the opposite of a format-aware extractor. Every
+  scanner runs over the same raw text whatever the format is, so a
+  document nothing can parse is still scanned and still reports
+  everything in it — it loses its key paths and not one finding. The
+  readers are line scanners rather than parsers, which is also what keeps
+  the offsets the raw document's. `a_format_never_changes_which_findings_exist`
+  runs one document through every reader and asserts the findings are
+  identical each time.
+
+  **The corollary is why `coverage-matrix` checks the readers.** A lost
+  key path costs no finding, so a reader that quietly stopped naming
+  anything would pass every other test in the suite.
 - **A leading UTF-8 BOM is not stripped**, unlike the sibling crates. The
   report carries byte offsets into the file on disk; deleting three bytes
   would move all of them. It is excluded from the findings instead, which
@@ -213,7 +241,7 @@ suite**; each names the bug it would have caught.
 | `platform` | a second operating system: separators, case folding, reserved device names, CRLF against a lone CR, stdin closing early, `TZ` set and unset | `crate/tests/platform.rs` |
 | `fuzz` | text nobody would type, time-boxed and seeded | `crate/tests/fuzz.rs` |
 | `budget` | a clock: a wall-clock ceiling plus linearity in both directions | `crate/tests/budget.rs` |
-| `coverage-matrix` | whether every `kind`, `severity` and `reason` is reachable from a real fixture | `crate/src/detect/corpus.rs` |
+| `coverage-matrix` | whether every format reader, `kind`, `severity` and `reason` is reachable from a real fixture | `crate/src/detect/corpus.rs` |
 
 Rules that hold across all of them:
 
@@ -372,17 +400,6 @@ enforced by review until that job exists.
 
 ## Known limitations (documented, not bugs)
 
-- **The report echoes a file *name* verbatim.** The report-safety rule
-  covers everything the scan *found*; the `file` field is the path the
-  caller handed in, echoed back so it can be opened and grepped for. A
-  repository holding a file whose name carries a right-to-left override
-  therefore produces a report that reorders the reader's terminal.
-  Rewriting the path is not a free fix — an escaped path cannot be
-  opened, and `tests/platform.rs` asserts the opposite property, that a
-  path comes back the way the caller typed it. Pinned as it stands by
-  `a_hostile_file_name_is_echoed_as_given_and_the_findings_stay_inert`,
-  so a change to the path contract shows up as a failing test rather than
-  a silent shift. **Unresolved: which of the two properties wins.**
 - **A path named explicitly that is not a regular file or a directory
   vanishes from the report.** `walk::collect` selects regular files, so a
   FIFO, a socket or a device named on the command line produces a run
@@ -398,12 +415,16 @@ enforced by review until that job exists.
   confusable check. Neither is a correctness bug; both are the cost of
   standing on maintained data instead of copying it, and both improve
   when upstream does. Written down in `crate/SPEC.md` rather than glossed.
-- **One false positive is left on purpose.** A backslash escape
-  immediately followed by non-Latin text makes a mixed word: `"Hello\nПривет"`
-  contains the byte run `nПривет`. The bytes really are a Latin letter
-  followed by Cyrillic; teaching the word splitter about escapes would
-  mean guessing which language a file is in, which is the guessing the
-  rest of the spec refuses. `--kind` narrows it away.
+- **One false positive is left on purpose, outside JSON.** A backslash
+  escape immediately followed by non-Latin text makes a mixed word:
+  `"Hello\nПривет"` contains the byte run `nПривет`. Inside a JSON
+  string the grammar settles it — `\n` is a line feed, so the JSON
+  reader hands the word splitter the escape ranges and the word breaks
+  there. In a `.rs`, a `.py` or a `.txt` it is still reported, because
+  the bytes really are a Latin letter followed by Cyrillic and a
+  backslash is an ordinary character where `C:\Привет` is a path.
+  Resolving it needs a grammar that says so, and this crate has one for
+  JSON and for nothing else it reads. `--kind` narrows it away.
 - **`tests/scenarios.rs` has no CI job.** It is gated behind
   `UNICODE_LE_SCENARIOS` and nothing in `ci-crate.yml` sets it, so those
   four cases skip on every run. They say so by name rather than passing

@@ -26,7 +26,11 @@ between the two frontends the way it is in the sibling repos.
 crate/src/
 ├── detect/         pure: the character tables, the script rules, the
 │                   normalization check, encoding, positions, the
-│                   codepoint rendering. No filesystem, pub(crate).
+│                   codepoint rendering, and the key-path readers —
+│                   format.rs decides which, locate.rs is the seam, and
+│                   json/yaml/toml/ini/dotenv/csv are the readers.
+│                   No filesystem, pub(crate).
+├── escape.rs       the one place a path or a key becomes inert
 ├── walk.rs         ignore-aware tree walking
 ├── scan.rs         one file end to end — the only path either surface calls
 ├── cli.rs          the terminal surface
@@ -95,6 +99,27 @@ crate/src/
   refusal naming a caller-supplied path is the exception and echoes it
   verbatim, because a message that rewrites its path cannot be grepped
   for.
+- **`file` and `key` are the two fields this crate does not author, and
+  they are escaped rather than rewritten.** Every non-ASCII codepoint in
+  anything printed becomes `\uXXXX`; `escape` is the one place that
+  decides it, applied to the *serialized document* because escaping a
+  field first does not survive `serde_json`. Both must round-trip — a
+  path has to open, a key has to match the document — and a test asserts
+  the decoded path opens the file it names. The exemption these two used
+  to have is what made a hostile file name exploitable.
+- **A format decides how a finding is addressed, never whether it
+  exists.** `detect/locate.rs` and the six readers behind it contribute
+  key paths and nothing else; every scanner runs over the same raw text
+  whatever the format. A document nothing can parse is still scanned and
+  loses only its key paths. They are line scanners rather than parsers,
+  which is what keeps the offsets the raw document's — and each states
+  its own limits in its own module doc.
+- **The JSON reader is the only one allowed to resolve an escape.**
+  `\n` inside a JSON string is a line feed, so the word splitter breaks
+  there and `"Hello\nПривет"` is not a mixed word. Everywhere else the
+  bytes really are a Latin letter against Cyrillic and it stays a
+  finding. Do not extend this to a format whose grammar this crate does
+  not read.
 - **Column lookups are checkpointed, not counted from the line start.**
   `detect/position.rs` carries a checkpoint every kilobyte, empty for an
   ASCII document. Without them a minified bundle — one line, one lookup
@@ -211,8 +236,10 @@ The bar, enforced by review:
   second operating system), `tests/fuzz.rs` (text nobody would type,
   time-boxed and seeded), `tests/budget.rs` (a wall-clock ceiling and
   linearity in both directions). The `coverage_matrix_*` tests in
-  `detect/corpus.rs` are the fifth: every `kind`, `severity` and `reason`
-  reachable from a real fixture. They print marker lines because
+  `detect/corpus.rs` are the fifth: every format reader, `kind`,
+  `severity` and `reason` reachable from a real fixture. The reader half
+  earns its place — a lost key path costs no finding by design, so a
+  reader that stopped naming anything would pass every other test here. They print marker lines because
   `cargo test <filter>` exits 0 when the filter matches nothing, and CI
   greps for them.
 - **A regression test's failure is observed, not assumed.** Revert the

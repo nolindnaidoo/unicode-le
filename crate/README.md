@@ -8,9 +8,11 @@ strings that a hash says are different and a person says are the same. A
 no-break space where a `split(' ')` expects a space.
 
 One command over a whole tree. Nothing is rewritten, and **nothing it
-finds is ever quoted back at you** — findings carry `U+XXXX`, never the
-character, because a report that pasted a bidi control would reorder the
-terminal of whoever read it.
+prints can render as anything** — findings carry `U+XXXX`, never the
+character, and even a file name or a key that holds a bidi control comes
+out as `\uXXXX`. A report that pasted one raw would reorder the terminal
+of whoever read it. Because `\uXXXX` is JSON's own escape, a parser
+still decodes the path back to the file it opens.
 
 ## Sixty seconds
 
@@ -77,6 +79,30 @@ Cyrillic, Greek, Han, Hiragana, Katakana and Hangul:
 | `--script Han,Hiragana,Katakana,Hangul,Cyrillic,Greek` | **0** |
 
 Both numbers matter. The second says the checks *ran* and found nothing.
+
+## It tells you where in the document, not just where in the file
+
+```
+$ unicode-le locales/
+locales/en.json:412:19  [high] bidi-control U+202E  at metrics.headline.eyebrow
+  right-to-left override: a bidirectional control reorders how the rest of the
+  line renders, so the text a reviewer reads is not the text that runs
+```
+
+A line number in a five-thousand-line catalogue is something you have to
+go and look up. `metrics.headline.eyebrow` is the thing you were looking
+for. JSON, YAML, TOML, INI, `.env` and CSV all resolve a key path;
+anything else is scanned exactly the same way and reports the same
+findings without one.
+
+**The format never decides whether a finding exists**, only how it is
+addressed. A file whose format cannot be parsed still gets scanned, and
+a truncated document still yields the key paths it did manage to read.
+
+One thing it does decide: inside a JSON string, `\n` is an escape and
+not the letter `n`, so `"Hello\nПривет"` is no longer reported as a word
+that mixes scripts. In a `.txt` file it still is, because there a
+backslash is an ordinary character and `C:\Привет` is a path.
 
 ## It never rewrites your files
 

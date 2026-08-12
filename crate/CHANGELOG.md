@@ -23,6 +23,18 @@ assumed.
   timestamp, a human summary on stderr, and exit codes — 0 clean, 1
   findings, 2 the question was malformed. `--kind`, `--script`,
   `--fail-on`, `--strict`, `--stdin`, `--hidden`, `--no-ignore`.
+- **Key paths.** A finding in a JSON, YAML, TOML, INI, `.env` or CSV
+  document carries `key` — `metrics.headline.eyebrow` rather than a line
+  number in a five-thousand-line catalogue. The format is resolved from
+  the file's own name; `detect_unicode_risks` takes `format` or
+  `filename`, since a document handed to it has neither.
+
+  **The format decides how a finding is addressed and never whether it
+  exists.** Every scanner runs over the same raw text whatever the
+  format, so a document nothing can parse is still scanned and still
+  reports everything in it, without a key. The readers are line scanners
+  rather than parsers, which keeps the offsets the raw document's and
+  means a truncated document still yields what it did read.
 - **The MCP server** (`unicode-le mcp`) with `detect_unicode_risks`,
   which touches no filesystem, and `unicode_le_scan`, which returns the
   same report the CLI writes. A contract test drives both surfaces over
@@ -33,12 +45,18 @@ assumed.
 
 ### The shape of it
 
-**Nothing it finds is ever quoted back.** A finding carries `U+XXXX` and
-prose this crate wrote, never source text. A report that pasted a raw
-U+202E would reorder the terminal, the diff and the pull request of
+**Nothing it prints can render as anything.** A finding carries `U+XXXX`
+and prose this crate wrote, never source text. A report that pasted a
+raw U+202E would reorder the terminal, the diff and the pull request of
 whoever read it — the tool would become the delivery mechanism for the
 thing it detects. A test asserts a serialized report is pure ASCII, over
 a document holding one of every hazard.
+
+Two fields are not written by this crate and cannot be rewritten: `file`
+is the caller's path, which has to open, and `key` is text out of the
+document, which has to match it. Both are **escaped** — every non-ASCII
+codepoint becomes `\uXXXX`, which is JSON's own escape, so the bytes on
+the wire are inert and a parser still decodes them back byte for byte.
 
 **It refuses to judge what it cannot judge honestly.** A file whose
 letters are at least 10% an undeclared non-Latin script gets the
@@ -71,9 +89,14 @@ and seeded) and `budget` (a wall-clock ceiling plus linearity in both
 directions). A fifth, `coverage-matrix`, asserts every finding kind,
 every severity and every refusal reason is reachable from a real fixture.
 
-Three defects were found and fixed before this release rather than after
+Four defects were found and fixed before this release rather than after
 it, and each has a regression test whose failure was observed against the
 unfixed code:
+
+- The report echoed a file *name* verbatim, so a repository holding a
+  file named with a right-to-left override produced a report that
+  reordered the reader's terminal — through the one field the
+  report-safety rule did not cover.
 
 - The `intentional_script_context` share was counted over every non-Latin
   letter and attributed to the undeclared scripts alone, so declaring a

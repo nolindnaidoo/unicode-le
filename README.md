@@ -21,9 +21,12 @@ strings that a hash says are different and a person says are the same. A
 no-break space where a `split(' ')` expects a space.
 
 One command over a whole tree. Nothing is rewritten, and **nothing it
-finds is ever quoted back at you** — findings carry `U+XXXX`, never the
-character, because a report that pasted a bidi control would reorder the
-terminal, the diff and the pull request of whoever read it.
+prints can render as anything** — findings carry `U+XXXX`, never the
+character, and even a file name or a key that holds a bidi control comes
+out as `\uXXXX`. A report that pasted one raw would reorder the
+terminal, the diff and the pull request of whoever read it. Because
+`\uXXXX` is JSON's own escape, a parser still decodes the path back to
+the file it opens.
 
 ## Sixty seconds
 
@@ -104,6 +107,42 @@ Cyrillic, Greek, Han, Hiragana, Katakana and Hangul:
 
 Both numbers matter. The second says the checks *ran* and found nothing.
 
+## It says where in the document, not just where in the file
+
+```
+$ unicode-le locales/
+locales/en.json:412:19  [high] bidi-control U+202E  at metrics.headline.eyebrow
+  right-to-left override: a bidirectional control reorders how the rest of the
+  line renders, so the text a reviewer reads is not the text that runs
+```
+
+A line number in a five-thousand-line catalogue is something you have to
+go and look up. `metrics.headline.eyebrow` is the thing you were looking
+for.
+
+| format | from | key path |
+|---|---|---|
+| JSON | `.json`, `.jsonc` | `metrics.headline.eyebrow`, `rows.[2].id` |
+| YAML | `.yaml`, `.yml` | `service.display.label` |
+| TOML | `.toml` | `server.limits.note` |
+| INI | `.ini`, `.cfg`, `.conf`, `.properties` | `database.host` |
+| dotenv | `.env` | `API_HOST` |
+| CSV | `.csv`, `.tsv` | the column's header name |
+| anything else | — | no key, same findings |
+
+**The format never decides whether a finding exists**, only how it is
+addressed — the opposite of what a format-aware extractor does. A file
+whose format cannot be parsed is still scanned and still reports
+everything in it; a truncated document still yields the key paths it did
+manage to read. A test runs one document through every reader and
+asserts the findings come back identical each time.
+
+One thing the format does decide: inside a JSON string, `\n` is an
+escape and not the letter `n`, so `"Hello\nПривет"` is no longer
+reported as a word that mixes scripts. In a `.txt` file it still is,
+because there a backslash is an ordinary character and `C:\Привет` is a
+path.
+
 ## It never rewrites your files
 
 No `--fix`. No normalization. No stripping. The form your text is in is
@@ -132,7 +171,8 @@ levels cannot say "this one is the CVE". `--fail-on bidi` does.
 
 Every finding carries a file, a 1-based line and **UTF-16 column** (what
 your editor's ruler shows), a byte offset, the codepoints as `U+XXXX`,
-the scripts involved and a severity. Confusables also carry `resembles`.
+the scripts involved and a severity. Confusables also carry `resembles`,
+and a finding in a document whose format is readable carries `key`.
 
 ## It refuses rather than guessing
 

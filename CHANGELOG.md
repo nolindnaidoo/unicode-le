@@ -46,8 +46,53 @@ the two frontends the way it is in the sibling repos.
     from a real fixture, with a marker line CI greps for, because
     `cargo test <filter>` exits 0 when the filter matches nothing.
 
+- **Key paths.** A finding now carries `key` — the document's own name
+  for where it sits, so a bidi control in a five-thousand-line locale
+  catalogue comes back at `metrics.headline.eyebrow` rather than at a
+  line number somebody has to go and look up. JSON, YAML, TOML, INI,
+  `.env` and CSV resolve one, from the file's own extension; the MCP
+  document tool takes `format` or `filename`, since a document handed to
+  it has neither.
+
+  **The format decides how a finding is addressed and never whether it
+  exists** — the inversion the layer rests on, and the opposite of what
+  a format-aware extractor does. Every scanner runs over the same raw
+  text whatever the format, so a document nothing can parse is still
+  scanned and still reports everything in it, without a key. The readers
+  are line scanners rather than parsers, so the offsets stay the raw
+  document's and a truncated document still yields what it did read.
+  `coverage-matrix` now asserts every reader is reachable from a real
+  fixture and comes back carrying a key path — which earns its place,
+  because a lost key path costs no finding and a reader that quietly
+  stopped naming things would pass every other test in the suite.
+
 ### Fixed
 
+- **A hostile file name no longer reaches the reader raw.** The
+  report-safety rule covered everything the scan *found* and stopped at
+  the one string the crate does not author: `file` is the caller's own
+  path, echoed back so it can be opened and grepped for, and that
+  exemption is what made it exploitable. A repository holding a file
+  named with a right-to-left override produced a report that reordered
+  the terminal, the diff and the pull request of whoever read it.
+
+  Every non-ASCII codepoint in a path — and in a `key`, which is text
+  out of the document and carries the same hazard — is now emitted as
+  `\uXXXX`, on both streams and both surfaces. Because that is JSON's
+  own escape, both properties hold at once: the raw bytes carry nothing
+  that can render, and a parser decodes the field back to the identical
+  string, so the path still opens the file it names. The escape is
+  applied to the serialized document, never to the field — escaping
+  first does not survive `serde_json`, which escapes the backslash and
+  ships `\\u202E`.
+- **The escape-sequence false positive is resolved for JSON.** Inside a
+  JSON string, `\n` is a line feed and not the letter `n`, so
+  `"Hello\nПривет"` is no longer reported as a word that mixes scripts.
+  The JSON reader hands the word splitter the byte ranges of the escapes
+  it found; the splitter still infers nothing. In every other format it
+  is still reported, because there the bytes really are a Latin letter
+  followed by Cyrillic and a backslash is an ordinary character where
+  `C:\Привет` is a path.
 - **Declaring a script no longer disables the checks it was meant to
   enable.** The `intentional_script_context` share was counted over
   *every* non-Latin letter and then attributed to the undeclared scripts
