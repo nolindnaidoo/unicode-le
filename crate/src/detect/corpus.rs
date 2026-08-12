@@ -10,7 +10,7 @@
 
 use serde::Deserialize;
 
-use super::{Finding, Kind, Options, Reason, encoding, examine, scripts::parse_script};
+use super::{Finding, Kind, Options, Reason, Severity, encoding, examine, scripts::parse_script};
 
 const DETECTION: &str = include_str!("../../fixtures/detection.json");
 
@@ -266,4 +266,137 @@ fn every_kind_appears_somewhere_in_the_corpus() {
     for (kind, name, _) in super::KINDS {
         assert!(found.contains(&kind), "no corpus case pins {name}");
     }
+}
+
+// ------------------------------------------------------------ the matrix
+//
+// **Does this crate open what it claims?**
+//
+// The extractor crates in this family answer that with one fixture per
+// extension in their alias table. This crate has no format table — it
+// reads every text file and has no opinion about the name — so the
+// question is asked of the other thing it publishes: its vocabulary.
+// `kind`, `severity` and `reason` are the three enums a caller filters,
+// sorts and branches on, and every value in each of them is a claim that
+// this tool can produce it.
+//
+// A value nothing can reach is the same failure as a format in the table
+// with no corpus document: it inflates what the tool says it covers, and
+// a consumer writing a `match` over the JSON handles a case that never
+// arrives. So each is reached from a **real fixture**, not from a
+// hand-built string — the fixture is the thing a reader can open.
+//
+// The marker lines are not decoration. `cargo test <filter>` exits 0
+// when the filter matches nothing, so a renamed test would leave the CI
+// job green and checking nothing; the job greps for these instead.
+
+/// Every severity a finding can carry.
+///
+/// Kept beside the exhaustive `match` in `severity_name` below: adding a
+/// variant fails to compile there, which is what stops this list going
+/// stale while the enum grows.
+const SEVERITIES: [Severity; 3] = [Severity::Low, Severity::Medium, Severity::High];
+
+/// Every reason a file, or part of one, can go unjudged for.
+const REASONS: [Reason; 3] = [
+    Reason::BinaryOrUndecodable,
+    Reason::EncodingUnknown,
+    Reason::IntentionalScriptContext,
+];
+
+fn severity_name(severity: Severity) -> &'static str {
+    match severity {
+        Severity::Low => "low",
+        Severity::Medium => "medium",
+        Severity::High => "high",
+    }
+}
+
+fn reason_name(reason: Reason) -> &'static str {
+    match reason {
+        Reason::BinaryOrUndecodable => "binary_or_undecodable",
+        Reason::EncodingUnknown => "encoding_unknown",
+        Reason::IntentionalScriptContext => "intentional_script_context",
+    }
+}
+
+/// Every finding produced by running the corpus, as the code actually
+/// produces it — not as `detection.json` says it should. The expectation
+/// lists could be edited to match a regression; a fixture that no longer
+/// produces its finding cannot be.
+fn findings_from_every_fixture() -> Vec<Finding> {
+    TEXT_DOCUMENTS
+        .iter()
+        .flat_map(|(_, content)| examine(content, &Options::default()).findings)
+        .collect()
+}
+
+/// Every kind is produced by running a fixture through `examine`.
+#[test]
+fn coverage_matrix_every_kind_is_reachable_from_a_fixture() {
+    let findings = findings_from_every_fixture();
+    for (kind, name, short) in super::KINDS {
+        assert!(
+            findings.iter().any(|finding| finding.kind == kind),
+            "{name} is offered as a filter (`{short}`) and no fixture produces it"
+        );
+    }
+    eprintln!(
+        "coverage-matrix: {} kinds reachable from fixtures",
+        super::KINDS.len()
+    );
+}
+
+/// Every severity is produced by running a fixture, and spells itself
+/// the same way in the JSON a caller reads.
+#[test]
+fn coverage_matrix_every_severity_is_reachable_from_a_fixture() {
+    let findings = findings_from_every_fixture();
+    for severity in SEVERITIES {
+        assert!(
+            findings.iter().any(|finding| finding.severity == severity),
+            "no fixture produces a {} finding",
+            severity_name(severity)
+        );
+        let rendered = serde_json::to_string(&severity).expect("serializes");
+        assert_eq!(rendered, format!("\"{}\"", severity_name(severity)));
+    }
+    eprintln!(
+        "coverage-matrix: {} severities reachable from fixtures",
+        SEVERITIES.len()
+    );
+}
+
+/// Every refusal reason is produced by a fixture, and spells itself the
+/// same way in the JSON. A documented reason nothing can reach is a
+/// state a consumer handles and never sees.
+#[test]
+fn coverage_matrix_every_refusal_reason_is_reachable_from_a_fixture() {
+    let mut reached: Vec<Reason> = TEXT_DOCUMENTS
+        .iter()
+        .flat_map(|(_, content)| examine(content, &Options::default()).refusals)
+        .map(|refusal| refusal.reason)
+        .collect();
+    reached.extend(
+        BYTE_DOCUMENTS
+            .iter()
+            .filter_map(|(_, bytes)| match encoding::decode(bytes) {
+                encoding::Decoded::Refused(refusal) => Some(refusal.reason),
+                encoding::Decoded::Text(_) => None,
+            }),
+    );
+
+    for reason in REASONS {
+        assert!(
+            reached.contains(&reason),
+            "no fixture produces a {} refusal",
+            reason_name(reason)
+        );
+        let rendered = serde_json::to_string(&reason).expect("serializes");
+        assert_eq!(rendered, format!("\"{}\"", reason_name(reason)));
+    }
+    eprintln!(
+        "coverage-matrix: {} refusal reasons reachable from fixtures",
+        REASONS.len()
+    );
 }
