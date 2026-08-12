@@ -1,5 +1,6 @@
 mod cli;
 mod detect;
+mod escape;
 mod mcp;
 mod scan;
 mod walk;

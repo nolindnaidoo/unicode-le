@@ -48,7 +48,12 @@ pub(crate) fn serve() -> ExitCode {
         let Some(response) = handle(&request) else {
             continue; // a notification: no reply
         };
-        if writeln!(stdout, "{response}").is_err() || stdout.flush().is_err() {
+        // Escaped after serialization: the report carries one string
+        // this crate did not write, the caller's own path, and a frame
+        // that pasted it raw would reorder whatever renders the log.
+        // A client still parses it back to the identical path.
+        let line = crate::escape::json(&response.to_string());
+        if writeln!(stdout, "{line}").is_err() || stdout.flush().is_err() {
             return ExitCode::from(2);
         }
     }

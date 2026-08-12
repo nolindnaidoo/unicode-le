@@ -116,29 +116,16 @@ impl Run {
     }
 }
 
-/// `run_raw`, plus the rule the whole tool rests on: whatever went in,
-/// nothing that comes out can render as anything. Asserted on every case
-/// in this file rather than in one test.
-fn run(case: &str, args: &[&str]) -> Run {
-    let run = run_raw(case, args);
-    assert!(
-        run.stdout.is_ascii(),
-        "{case}: stdout is not ASCII: {}",
-        run.stdout
-    );
-    assert!(
-        run.stderr.is_ascii(),
-        "{case}: stderr is not ASCII: {}",
-        run.stderr
-    );
-    run
-}
-
 /// Runs the binary and **fails rather than blocks**. A hang is one of
 /// the two failure modes this file exists to catch — a FIFO with no
 /// writer is one `read` away from an eternal CI job — so the child is
 /// killed and the case is named.
-fn run_raw(case: &str, args: &[&str]) -> Run {
+///
+/// Holds both streams to ASCII on **every** case rather than in one
+/// test: that is the rule the whole tool rests on, and it now covers the
+/// path as well as the finding, so there is no input in this file that
+/// is allowed to break it.
+fn run(case: &str, args: &[&str]) -> Run {
     let mut child = Command::new(BINARY)
         .args(args)
         // Never inherit the terminal: `--stdin` reads to end of stream,
@@ -187,10 +174,14 @@ fn run_raw(case: &str, args: &[&str]) -> Run {
         "{case}: exit {code} is outside the documented 0/1/2 on {args:?}"
     );
 
+    let stdout = String::from_utf8_lossy(&out.join().expect("stdout thread")).into_owned();
+    let stderr = String::from_utf8_lossy(&err.join().expect("stderr thread")).into_owned();
+    assert!(stdout.is_ascii(), "{case}: stdout is not ASCII: {stdout}");
+    assert!(stderr.is_ascii(), "{case}: stderr is not ASCII: {stderr}");
     Run {
         code,
-        stdout: String::from_utf8_lossy(&out.join().expect("stdout thread")).into_owned(),
-        stderr: String::from_utf8_lossy(&err.join().expect("stderr thread")).into_owned(),
+        stdout,
+        stderr,
     }
 }
 
@@ -644,11 +635,12 @@ fn a_path_over_260_characters_is_scanned_or_skipped_cleanly() {
     assert_eq!(run.file("deep.ts")["findings"][0]["kind"], "bidi-control");
 }
 
-/// Awkward but ASCII names: a space, a doubled dot, a leading dash that
-/// the argument parser must not mistake for a flag when it arrives as
-/// part of a walked path.
+/// Awkward names, ASCII and not. The non-ASCII ones are here rather
+/// than in a separate case because the report now escapes them: a name
+/// that is full-width or accented costs the report nothing and must not
+/// break the walk.
 #[test]
-fn awkward_ascii_file_names_are_scanned() {
+fn awkward_file_names_are_scanned() {
     let tree = Tree::new("names");
     let mut checked = 0;
     for name in [
@@ -656,6 +648,9 @@ fn awkward_ascii_file_names_are_scanned() {
         "trailing.dots..ts",
         "-leading-dash.ts",
         "a'quote.ts",
+        "\u{fc}nicode.ts",
+        "\u{FF26}\u{FF29}\u{FF2C}\u{FF25}.ts",
+        "\u{1D41A}stral.ts",
     ] {
         if std::fs::write(tree.path().join(name), "const total = 1;\n").is_err() {
             skipped("awkward-names", name);
@@ -664,38 +659,88 @@ fn awkward_ascii_file_names_are_scanned() {
         checked += 1;
     }
     assert!(checked > 0, "this filesystem refused every awkward name");
+    // `scan` holds both streams to ASCII, so this also asserts that
+    // every one of those names came back escaped rather than raw.
     let run = scan("names", tree.path());
     assert_eq!(run.report()["summary"]["files"], checked);
 }
 
-/// **A gap this suite found, pinned at the floor it actually holds.**
-///
-/// The report-safety rule covers everything the scan *found*: a finding
-/// carries `U+XXXX` and prose this crate wrote, and `detect::hazards`
-/// asserts that over the whole corpus. It does **not** cover the `file`
-/// field, which is the path the caller handed in, echoed back so it can
-/// be opened and grepped for. A repository holding a file whose *name*
-/// carries a right-to-left override therefore produces a report that
-/// reorders the terminal of whoever reads it — the delivery mechanism
-/// this tool exists to avoid being, reached through the one string it
-/// does not author.
-///
-/// Rewriting the path is not a free fix: an escaped path cannot be
-/// opened, and `platform.rs` asserts the opposite property, that a path
-/// comes back the way the caller typed it. So this asserts what is true
-/// today — the scan completes, the findings are inert, and the name is
-/// echoed as given — and the gap is written down in AGENTS.md as a known
-/// limitation rather than quietly passing here.
+/// The same rule on the other surface. A model is handed the MCP frame,
+/// and a frame that pasted a hostile path raw would reorder whatever
+/// renders it — the log, the transcript, the review comment.
 #[test]
-fn a_hostile_file_name_is_echoed_as_given_and_the_findings_stay_inert() {
+fn the_mcp_server_escapes_a_hostile_file_name_too() {
+    use std::io::Write as _;
+
+    let tree = Tree::new("mcp-hostile");
+    let hostile = format!("invoice{RLO}fdp.ts");
+    if std::fs::write(tree.path().join(&hostile), "const total = 1;\n").is_err() {
+        skipped(
+            "mcp-hostile",
+            "this filesystem refused a bidi control in a name",
+        );
+        return;
+    }
+
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "unicode_le_scan",
+            "arguments": { "path": tree.path().to_string_lossy() },
+        },
+    });
+    let mut child = Command::new(BINARY)
+        .arg("mcp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the server starts");
+    writeln!(child.stdin.as_mut().expect("stdin"), "{request}").expect("written");
+    let output = child.wait_with_output().expect("the server finishes");
+
+    let raw = String::from_utf8_lossy(&output.stdout).into_owned();
+    assert!(raw.is_ascii(), "the MCP frame is not ASCII: {raw}");
+    assert!(raw.contains("\\u202E"), "{raw}");
+
+    // And it still round-trips: the path a model reads back opens.
+    let response: serde_json::Value =
+        serde_json::from_str(raw.lines().next().expect("a line")).expect("the reply is JSON");
+    let named = response["result"]["structuredContent"]["data"]["report"]["files"][0]["file"]
+        .as_str()
+        .expect("a path")
+        .to_string();
+    assert!(named.ends_with(&hostile), "{named:?}");
+    assert!(std::fs::read_to_string(&named).is_ok(), "{named:?}");
+}
+
+/// **The hole this suite found, now closed.**
+///
+/// The report-safety rule used to cover only what the scan *found* — a
+/// finding carries `U+XXXX` and prose this crate wrote. The `file` field
+/// was exempt because the crate does not author it: it is the path the
+/// caller handed in, echoed back so it can be opened and grepped for.
+/// That exemption is precisely what made it exploitable. A repository
+/// holding a file whose *name* carries a right-to-left override produced
+/// a report that reordered the terminal of whoever read it, through the
+/// one string the rule did not reach.
+///
+/// The fix keeps both properties rather than trading one for the other,
+/// because `\uXXXX` is JSON's own escape:
+///
+/// - **inert on the wire** — the raw bytes of stdout, a diff or a pull
+///   request hold no character that can reorder anything;
+/// - **unchanged for a machine** — a parser decodes the escape back to
+///   the identical string, and this asserts that the decoded path still
+///   opens the file it names.
+#[test]
+fn a_hostile_file_name_is_escaped_and_still_opens() {
     let tree = Tree::new("hostile-name");
     let hostile = format!("invoice{RLO}fdp.ts");
-    if std::fs::write(
-        tree.path().join(&hostile),
-        format!("const x = \"{RLO}\";\n"),
-    )
-    .is_err()
-    {
+    let body = format!("const x = \"{RLO}\";\n");
+    if std::fs::write(tree.path().join(&hostile), &body).is_err() {
         skipped(
             "hostile-name",
             "this filesystem refused a bidi control in a name",
@@ -703,28 +748,44 @@ fn a_hostile_file_name_is_echoed_as_given_and_the_findings_stay_inert() {
         return;
     }
 
-    let run = run_raw("hostile-name", &[&tree.path().to_string_lossy()]);
+    // `run` already holds both streams to ASCII, which is the first
+    // half: nothing on the wire can render as anything.
+    let run = scan("hostile-name", tree.path());
     assert_eq!(run.code, 1, "{}", run.stderr);
-    let report: serde_json::Value =
-        serde_json::from_str(&run.stdout).expect("stdout carries one JSON document");
-    let file = &report["files"][0];
-
-    // Everything the scan *found* is inert, which is the rule as stated.
-    let findings = serde_json::to_string(&file["findings"]).expect("serializes");
     assert!(
-        findings.is_ascii(),
-        "a finding carried a character: {findings}"
+        run.stdout.contains("\\u202E"),
+        "the hostile name is not escaped in the report: {}",
+        run.stdout
     );
-    assert_eq!(file["findings"][0]["codepoints"][0], "U+202E");
-
-    // The name is not, and that is the gap. Asserted so that a future
-    // change to the path contract shows up here as a failing test rather
-    // than as a silent shift.
     assert!(
-        file["file"].as_str().expect("a path").contains(RLO),
-        "the path contract changed: paths are no longer echoed verbatim, so \
-         the AGENTS.md limitation about hostile file names needs revisiting"
+        run.stderr.contains("\\u202E"),
+        "the hostile name is not escaped on stderr: {}",
+        run.stderr
     );
+
+    // The second half, and the one that makes the first affordable: a
+    // parser gives the path back byte for byte, so it still opens.
+    let report = run.report();
+    let named = report["files"][0]["file"]
+        .as_str()
+        .expect("a path")
+        .to_string();
+    assert!(
+        named.contains(RLO),
+        "the escape did not decode back to the real name: {named:?}"
+    );
+    assert!(
+        named.ends_with(&hostile),
+        "the decoded path is not the file that was written: {named:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&named).expect("the reported path opens"),
+        body,
+        "the path in the report does not open the file it names"
+    );
+
+    // And the finding itself is still the finding.
+    assert_eq!(report["files"][0]["findings"][0]["codepoints"][0], "U+202E");
 }
 
 // ---------------------------------------------------------------- stdin

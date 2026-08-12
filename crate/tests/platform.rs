@@ -152,9 +152,18 @@ fn every_path_in_the_report_is_separated_by_forward_slashes() {
     );
 }
 
-/// And the other half. A path the caller typed comes back the way the
-/// caller typed it: a refusal that helpfully normalised separators would
-/// be impossible to grep for with the string that produced it.
+/// And the other half. A path the caller typed comes back spelled the
+/// way the caller typed it: a refusal that helpfully normalised
+/// separators would be impossible to grep for with the string that
+/// produced it.
+///
+/// **Spelling, not encoding.** A non-ASCII codepoint in the path is
+/// escaped as `\uXXXX` on both streams — see `escape` — because the
+/// caller can hand this tool any name at all, including one whose own
+/// characters reorder the line it is printed on. The two rules do not
+/// collide: this one is about `/` versus `\` and about not rewriting
+/// segments, and the temp path here is ASCII, so it comes back byte for
+/// byte.
 #[test]
 fn a_refusal_names_the_path_the_caller_gave_it() {
     let tree = Tree::new("refusal-path");

@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use crate::detect::{self, Options};
+use crate::escape;
 use crate::scan::{self, FailOn, FileReport, Report};
 use crate::walk::{self, WalkOptions};
 
@@ -95,7 +96,10 @@ pub(crate) fn run() -> ExitCode {
     match execute(&args) {
         Ok(code) => ExitCode::from(code),
         Err(message) => {
-            eprintln!("unicode-le: {message}");
+            // A refusal names the path the caller gave it, and a caller
+            // can give it anything — including a name whose own
+            // characters reorder the line this prints on.
+            eprintln!("unicode-le: {}", escape::text(&message));
             ExitCode::from(2)
         }
     }
@@ -116,7 +120,10 @@ fn execute(args: &[String]) -> Result<u8, String> {
     let report = scan::report(files);
 
     let mut stdout = std::io::stdout().lock();
-    let line = serde_json::to_string(&report).expect("a report serializes");
+    // Escaped after serialization, never before: `serde_json` would
+    // escape the backslash of a pre-escaped path and the report would
+    // stop round-tripping. See `escape`.
+    let line = escape::json(&serde_json::to_string(&report).expect("a report serializes"));
     writeln!(stdout, "{line}").map_err(|error| format!("could not write the report: {error}"))?;
     drop(stdout);
 
@@ -231,7 +238,7 @@ fn summarise(report: &Report) {
 
     for file in &report.files {
         for refusal in &file.refusals {
-            let _ = writeln!(stderr, "{}: {}", file.file, refusal.detail);
+            let _ = writeln!(stderr, "{}: {}", escape::text(&file.file), refusal.detail);
         }
         for finding in &file.findings {
             let _ = writeln!(stderr, "{}", scan::describe(file, finding));

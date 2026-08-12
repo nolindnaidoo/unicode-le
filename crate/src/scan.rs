@@ -192,12 +192,13 @@ pub(crate) fn exit_code(report: &Report, fail_on: FailOn, strict: bool) -> u8 {
     u8::from(counted > 0)
 }
 
-/// One finding as a human line. Every field is ASCII by construction —
-/// see `detect::codepoint` — so this cannot render anything either.
+/// One finding as a human line. Every field a finding carries is ASCII
+/// by construction — see `detect::codepoint` — and the one field it does
+/// not author, the path, is escaped here for the same reason.
 pub(crate) fn describe(report: &FileReport, finding: &Finding) -> String {
     format!(
         "{}:{}:{}  [{}] {} {}  {}",
-        report.file,
+        crate::escape::text(&report.file),
         finding.position.line,
         finding.position.column,
         severity_name(finding.severity),
