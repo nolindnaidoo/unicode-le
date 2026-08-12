@@ -75,19 +75,21 @@ pub(crate) fn key_spans(text: &str) -> Vec<KeySpan> {
             }
             b'"' => {
                 let (content, end) = read_string(bytes, at);
-                let key = frames.last().is_some_and(|frame| frame.expect_key);
-                if key {
-                    if let Some(segment) = path.last_mut() {
-                        *segment = text[content.clone()].to_string();
-                    }
-                } else {
-                    spans.push(KeySpan {
-                        start: content.start,
-                        end: content.end,
-                        path: join(&path),
-                    });
-                }
                 at = end;
+                // A key names the innermost segment and is not a value
+                // region of its own. A hazard hiding in a key's own text
+                // is still found — the character scan reads the raw
+                // document and has no opinion about structure — it simply
+                // carries no key path.
+                if let Some(segment) = key_segment(&frames, &mut path) {
+                    *segment = text[content].to_string();
+                    continue;
+                }
+                spans.push(KeySpan {
+                    start: content.start,
+                    end: content.end,
+                    path: join(path.iter().map(String::as_str)),
+                });
             }
             b'/' => at = skip_comment(bytes, at),
             byte if is_scalar_byte(byte) => {
@@ -98,13 +100,26 @@ pub(crate) fn key_spans(text: &str) -> Vec<KeySpan> {
                 spans.push(KeySpan {
                     start,
                     end: at,
-                    path: join(&path),
+                    path: join(path.iter().map(String::as_str)),
                 });
             }
             _ => at += 1,
         }
     }
     spans
+}
+
+/// The path segment a string literal renames, when the frame around it is
+/// an object still waiting for its key. `None` means the string is a
+/// value and belongs in a [`KeySpan`].
+///
+/// A frame and a segment are pushed and popped together, so a frame
+/// expecting a key always has a segment to rename.
+fn key_segment<'a>(frames: &[Frame], path: &'a mut [String]) -> Option<&'a mut String> {
+    if !frames.last().is_some_and(|frame| frame.expect_key) {
+        return None;
+    }
+    path.last_mut()
 }
 
 /// The byte ranges of every escape sequence inside a JSON string.
@@ -132,27 +147,37 @@ pub(crate) fn escape_spans(text: &str) -> Vec<std::ops::Range<usize>> {
             at += 1;
             continue;
         }
-        at += 1;
-        while at < bytes.len() {
-            match bytes[at] {
-                b'\\' => {
-                    let width = if bytes.get(at + 1) == Some(&b'u') {
-                        6
-                    } else {
-                        2
-                    };
-                    spans.push(at..(at + width).min(bytes.len()));
-                    at += width;
-                }
-                b'"' => {
-                    at += 1;
-                    break;
-                }
-                _ => at += 1,
-            }
-        }
+        at = escapes_in_string(bytes, at + 1, &mut spans);
     }
     spans
+}
+
+/// The escapes inside one string literal, entered just past its opening
+/// quote, answering the offset just past its closing one. An unterminated
+/// string runs to the end of the document, which is the same reading a
+/// person gets by looking at it.
+fn escapes_in_string(bytes: &[u8], from: usize, spans: &mut Vec<std::ops::Range<usize>>) -> usize {
+    let mut at = from;
+    while at < bytes.len() {
+        match bytes[at] {
+            b'"' => return at + 1,
+            b'\\' => {
+                // Six bytes for `\uXXXX`, two otherwise. Covering only
+                // `\u` would leave the four hex digits as word material,
+                // gluing the text either side of the escape together
+                // rather than breaking it.
+                let width = if bytes.get(at + 1) == Some(&b'u') {
+                    6
+                } else {
+                    2
+                };
+                spans.push(at..(at + width).min(bytes.len()));
+                at += width;
+            }
+            _ => at += 1,
+        }
+    }
+    bytes.len()
 }
 
 /// The byte range between the quotes, and the offset just past the
