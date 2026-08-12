@@ -85,10 +85,7 @@ pub(crate) fn report(files: Vec<FileReport>) -> Report {
         findings: files.iter().map(|file| file.summary.findings).sum(),
         bidi: files.iter().map(|file| file.summary.bidi).sum(),
         refusals: files.iter().map(|file| file.summary.refusals).sum(),
-        unexamined: files
-            .iter()
-            .filter(|file| FileReport::was_unexamined(file))
-            .count(),
+        unexamined: files.iter().filter(|file| file.was_unexamined()).count(),
     };
     Report {
         schema: SCHEMA,
@@ -219,6 +216,24 @@ pub(crate) fn describe(report: &FileReport, finding: &Finding) -> String {
             .map(|key| format!("  at {}", crate::escape::text(key)))
             .unwrap_or_default(),
         finding.detail
+    )
+}
+
+/// One refusal as a human line.
+///
+/// **`detail` is escaped as well as the path**, and that half is the easy
+/// one to miss. Most refusals are prose this crate wrote and are ASCII by
+/// construction, but `scan_file` folds the operating system's own message
+/// into one — and that message is localized: a non-English Windows
+/// answers a permission failure with characters this stream promises
+/// never to carry. stdout escapes the whole serialized document at once
+/// and was never exposed; stderr escapes per field, and this is the field
+/// that was not.
+pub(crate) fn describe_refusal(file: &str, refusal: &Refusal) -> String {
+    format!(
+        "{}: {}",
+        crate::escape::text(file),
+        crate::escape::text(&refusal.detail)
     )
 }
 
@@ -363,6 +378,38 @@ mod tests {
         assert!(line.contains("a.ts:1:10"), "{line}");
         assert!(line.contains("[high] bidi-control U+202E"), "{line}");
         assert!(line.is_ascii(), "{line}");
+    }
+
+    /// **The regression.** A refusal detail was printed to stderr raw,
+    /// on the reasoning that this crate writes them and writes them in
+    /// ASCII. It writes all but one: `scan_file` folds the operating
+    /// system's message into `binary_or_undecodable`, and that message is
+    /// localized — a French or Japanese Windows answers a permission
+    /// failure with characters the stream promises never to carry, and an
+    /// English CI runner never sees it.
+    #[test]
+    fn a_refusal_line_escapes_the_detail_as_well_as_the_path() {
+        let refusal = Refusal {
+            reason: detect::Reason::BinaryOrUndecodable,
+            detail: "could not be read: Acc\u{e8}s refus\u{e9} (os error 13)".to_string(),
+        };
+        let line = describe_refusal("src/caf\u{e9}.ts", &refusal);
+        assert!(line.is_ascii(), "{line}");
+        assert!(line.contains("\\u00E9"), "the path lost its escape: {line}");
+        assert!(
+            line.contains("\\u00E8"),
+            "the detail reached stderr raw: {line}"
+        );
+    }
+
+    /// Every refusal this crate writes itself is ASCII already, so the
+    /// escape above is a floor rather than a rewrite: the ordinary line
+    /// is spelled exactly as it was.
+    #[test]
+    fn an_ordinary_refusal_line_is_unchanged_by_the_escape() {
+        let scanned = one("ключ: значение\nдругой: текст");
+        let line = describe_refusal(&scanned.file, &scanned.refusals[0]);
+        assert_eq!(line, format!("a.ts: {}", scanned.refusals[0].detail));
     }
 
     /// The human half is a projection of the report, and the report's

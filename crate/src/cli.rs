@@ -238,12 +238,18 @@ fn fail_on(value: &str) -> Result<FailOn, String> {
 /// The human half. Every line restates something already in the JSON,
 /// except the hint about naming a script — which belongs to this surface
 /// only, because the other one has no flags.
+///
+/// **Every write here is deliberately unchecked.** The report on stdout
+/// is the result and its failure is returned; this is the commentary on
+/// it, and `2>/dev/null` is the ordinary way to run a tool in a pipeline
+/// rather than a failure to report. A summary that could not be printed
+/// must not move the exit code a caller branches on.
 fn summarise(report: &Report) {
     let mut stderr = std::io::stderr().lock();
 
     for file in &report.files {
         for refusal in &file.refusals {
-            let _ = writeln!(stderr, "{}: {}", escape::text(&file.file), refusal.detail);
+            let _ = writeln!(stderr, "{}", scan::describe_refusal(&file.file, refusal));
         }
         for finding in &file.findings {
             let _ = writeln!(stderr, "{}", scan::describe(file, finding));
