@@ -101,6 +101,15 @@ unfixed code:
 - The `intentional_script_context` share was counted over every non-Latin
   letter and attributed to the undeclared scripts alone, so declaring a
   script refused the file it was meant to unlock.
+- A compatibility form inside a word that also mixed scripts was not
+  reported as a `confusable`. `judge` answered the two questions as one
+  either/or: a mixed word returned its `mixed-script` finding and never
+  reached the compatibility check. So `設ＦＩＬＥ` produced nothing under
+  `--kind confusable` and four findings under `--kind confusable --script
+  Han` — **declaring a script added findings**, the mirror of the bug
+  above, in the same function. The two questions are now answered
+  independently, and the half that is not about scripts does not take the
+  declared scripts as an argument, so it cannot be gated by them again.
 - The position index re-counted UTF-16 code units from the line start on
   every lookup, which is quadratic on a minified bundle: 20,000 findings
   on one line took 21.8s and now take 0.33s.

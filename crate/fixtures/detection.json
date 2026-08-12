@@ -390,7 +390,7 @@
       ]
     },
     {
-      "name": "one identifier written in two writing systems",
+      "name": "two identifiers written in two writing systems, the second with its Latin half full-width: the mixing and the compatibility forms are separate findings",
       "file": "mixed-script.py",
       "expected": [
         {
@@ -408,6 +408,76 @@
             "Latin"
           ],
           "detail": "one word written in Han and Latin: no single script accounts for it, which is how a name that reads as familiar is forged"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 6,
+          "column": 1,
+          "offset": 295,
+          "codepoints": [
+            "U+FF30"
+          ],
+          "scripts": [
+            "Latin"
+          ],
+          "resembles": [
+            "U+0050"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        },
+        {
+          "kind": "mixed-script",
+          "severity": "high",
+          "line": 6,
+          "column": 1,
+          "offset": 295,
+          "codepoints": [
+            "U+FF30",
+            "U+FF24",
+            "U+FF26",
+            "U+6587",
+            "U+4EF6"
+          ],
+          "scripts": [
+            "Han",
+            "Latin"
+          ],
+          "detail": "one word written in Han and Latin: no single script accounts for it, which is how a name that reads as familiar is forged"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 6,
+          "column": 2,
+          "offset": 298,
+          "codepoints": [
+            "U+FF24"
+          ],
+          "scripts": [
+            "Latin"
+          ],
+          "resembles": [
+            "U+0044"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
+        },
+        {
+          "kind": "confusable",
+          "severity": "high",
+          "line": 6,
+          "column": 3,
+          "offset": 301,
+          "codepoints": [
+            "U+FF26"
+          ],
+          "scripts": [
+            "Latin"
+          ],
+          "resembles": [
+            "U+0046"
+          ],
+          "detail": "a compatibility form of an ASCII character: it reads as the codepoint under `resembles` and does not compare equal to it"
         }
       ]
     },

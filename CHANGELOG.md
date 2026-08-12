@@ -107,6 +107,23 @@ the two frontends the way it is in the sibling repos.
   over the undeclared scripts only, the clause is conditional, and a
   declared file is judged — a Cyrillic `а` in a Latin word inside a
   declared-Japanese file is found.
+- **A compatibility form inside a mixed word is reported.** `judge`
+  answered two questions as one either/or: a word that mixed an
+  undeclared script with Latin returned its `mixed-script` finding and
+  never reached the compatibility check below it. So `設ＦＩＬＥ`
+  answered nothing under `--kind confusable` and four findings under
+  `--kind confusable --script Han` — **declaring a script added
+  findings**, which is the opposite of what declaring is for and the
+  mirror of the bug above, in the same function.
+
+  A compatibility form is not a script question: a full-width `Ｆ` reads
+  as `F` and does not compare equal to it whatever the file around it is
+  written in. The two questions are answered independently now, and the
+  half that is not about scripts **does not take the declared scripts as
+  a parameter** — so a third change cannot gate it by accident without
+  adding an argument that has no business being there.
+  `declaring_a_script_never_adds_a_finding` states the property both
+  bugs broke, in opposite directions.
 - **The position index no longer re-counts UTF-16 code units from the
   line start on every lookup.** Invisible on a config file and quadratic
   on the shape this tool is pointed at most: a minified bundle is one

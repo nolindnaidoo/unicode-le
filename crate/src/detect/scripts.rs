@@ -172,28 +172,68 @@ pub(crate) fn scan(
         .collect()
 }
 
+/// The two questions a word answers, asked independently.
+///
+/// **They are separate because only one of them is about scripts.**
+/// Whether a word mixes writing systems depends on which scripts the
+/// caller declared; whether a character is a compatibility form of an
+/// ASCII one does not, and a full-width `Ｆ` is a forged `F` in a
+/// Japanese file exactly as much as in an English one.
+///
+/// This function used to answer them as one either/or — a mixed word
+/// returned early and never reached the compatibility check — so
+/// `設ＦＩＬＥ` produced nothing under `--kind confusable` until `Han`
+/// was declared, and four findings once it was. **Declaring a script
+/// added findings**, which is the same inverted direction as the earlier
+/// bug in this file where declaring one removed them.
+///
+/// The shape is the guard now, not the comment: `compatibility` does not
+/// take `expected`, so it cannot be gated by it, and the next change
+/// cannot make this mistake a third time without adding a parameter that
+/// has no business being there.
 fn judge(offset: usize, word: &str, expected: &[Script]) -> Vec<Draft> {
+    let mut drafts = mixing(offset, word, expected);
+    drafts.extend(compatibility(offset, word));
+    drafts
+}
+
+/// The script question: a word no single writing system accounts for,
+/// and the characters in it that are impersonating another script's.
+///
+/// This is the half `expected` governs, and the only one. A declared
+/// script is an expected one, and mixing Latin with an expected script is
+/// what a translation looks like. Not a softening: CJK is written without
+/// spaces, so `CSVストリーミング` is one word by any segmentation, and a
+/// caller who has said the tree contains Han would otherwise get a
+/// finding on every string in it that mentions a product name. Measured,
+/// not guessed: on two real locale trees that rule is the difference
+/// between 102 findings and none.
+fn mixing(offset: usize, word: &str, expected: &[Script]) -> Vec<Draft> {
     let scripts = scripts_in(word);
-    // A declared script is an expected one, and mixing Latin with an
-    // expected script is what a translation looks like. This is not a
-    // softening: CJK is written without spaces, so `CSVストリーミング`
-    // is one word by any segmentation, and a caller who has said the
-    // tree contains Han would otherwise get a finding on every string
-    // in it that mentions a product name. Measured, not guessed: on two
-    // real locale trees that rule is the difference between 102
-    // findings and none.
     let undeclared: Vec<Script> = scripts
         .iter()
         .copied()
         .filter(|script| *script != Script::Latin && !expected.contains(script))
         .collect();
 
-    if !undeclared.is_empty() && !word.is_single_script() {
-        return mixed(offset, word, &scripts, &undeclared);
+    if undeclared.is_empty() || word.is_single_script() {
+        return Vec::new();
     }
-    // Nothing in this word is hiding as a neighbour. The one thing left
-    // to ask is whether its Latin part is written in letters that only
-    // *look* Latin.
+    mixed(offset, word, &scripts, &undeclared)
+}
+
+/// The question that is **not** about scripts: whether a character is a
+/// compatibility form of an ASCII one, wearing its face at a different
+/// codepoint.
+///
+/// `expected` is deliberately not a parameter. A full-width `Ｆ` reads as
+/// `F` and does not compare equal to it whatever the file around it is
+/// written in, so there is nothing here for a declared script to change —
+/// and a check that cannot see the declaration cannot be gated by it.
+///
+/// Cross-script homoglyphs are the other half's business: those are only
+/// confusable *against a neighbour*, which is a script question.
+fn compatibility(offset: usize, word: &str) -> Vec<Draft> {
     word.char_indices()
         .filter(|(_, character)| matches!(character.script(), Script::Latin | Script::Common))
         .filter_map(|(index, character)| compatibility_draft(offset + index, character))
@@ -593,6 +633,88 @@ mod tests {
             scan("\u{FF26}\u{FF29}\u{FF2C}\u{FF25}", &[Script::Han], &[]).len(),
             4
         );
+    }
+
+    /// **The regression, and the second time this function had the
+    /// direction backwards.** A word mixing an undeclared script with
+    /// Latin returned through `mixed` and never reached the compatibility
+    /// check, so a full-width letter inside one was reported only once
+    /// the script it was mixed with had been declared: `--kind
+    /// confusable` answered nothing on `設ＦＩＬＥ` and four findings on
+    /// `--kind confusable --script Han`. Declaring a script *added*
+    /// findings, which is the opposite of what declaring is for, and the
+    /// mirror of the earlier bug where declaring one removed them.
+    #[test]
+    fn a_compatibility_form_inside_a_mixed_word_is_still_confusable() {
+        // `設` is Han; the four that follow are full-width Latin.
+        let content = "\u{8a2d}\u{FF26}\u{FF29}\u{FF2C}\u{FF25}";
+        let undeclared = scan(content, &[], &[]);
+        let declared = scan(content, &[Script::Han], &[]);
+
+        // Declared, the mixing is a translation and only the
+        // compatibility forms are left.
+        assert_eq!(
+            declared.iter().map(|draft| draft.kind).collect::<Vec<_>>(),
+            [Kind::Confusable; 4]
+        );
+        // Undeclared, the mixing is a finding as well — and the four
+        // compatibility forms are still every one of them there.
+        assert_eq!(undeclared[0].kind, Kind::MixedScript);
+
+        let compatibility_forms = |drafts: &[Draft]| -> Vec<(usize, Vec<String>)> {
+            drafts
+                .iter()
+                .filter(|draft| draft.kind == Kind::Confusable)
+                .filter(|draft| draft.detail.starts_with("a compatibility form"))
+                .map(|draft| (draft.offset, draft.codepoints.clone()))
+                .collect()
+        };
+        assert_eq!(
+            compatibility_forms(&undeclared),
+            compatibility_forms(&declared),
+            "a compatibility form is not a script question and is reported either way"
+        );
+        assert_eq!(compatibility_forms(&declared).len(), 4);
+    }
+
+    /// **The property behind both bugs this function has had.** Declaring
+    /// a script says what a file is written in. It can only ever stop a
+    /// finding about mixing; it can never produce one that was not there
+    /// undeclared. Once the refusal is lifted, a declaration narrows and
+    /// never widens.
+    ///
+    /// Stated over the shapes rather than one case, because both
+    /// mistakes were a single word taking the wrong branch, and a check
+    /// aimed at the branch someone got wrong last time would not have
+    /// caught the other one.
+    #[test]
+    fn declaring_a_script_never_adds_a_finding() {
+        let declarations = [
+            vec![Script::Han],
+            vec![Script::Cyrillic],
+            vec![Script::Han, Script::Hiragana, Script::Katakana],
+            vec![Script::Cyrillic, Script::Greek, Script::Han],
+        ];
+        for content in [
+            "\u{8a2d}\u{FF26}\u{FF29}\u{FF2C}\u{FF25}",
+            "CSV\u{30b9}\u{30c8}\u{30ea}\u{30fc}\u{30df}\u{30f3}\u{30b0}",
+            "p\u{430}ypal",
+            "l\u{3bf}gin",
+            "\u{1d41a}dmin",
+            "\u{FF26}\u{FF29}\u{FF2C}\u{FF25}",
+            "\u{8a2d}\u{5b9a} p\u{430}ypal",
+            "const total = 1;",
+        ] {
+            let undeclared = scan(content, &[], &[]).len();
+            for declared in &declarations {
+                let narrowed = scan(content, declared, &[]).len();
+                assert!(
+                    narrowed <= undeclared,
+                    "declaring {declared:?} took {content:?} from {undeclared} findings to \
+                     {narrowed}: a declaration may narrow, never widen"
+                );
+            }
+        }
     }
 
     /// Pinned because it looks like a bug and is not — **in a document

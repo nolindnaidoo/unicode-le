@@ -175,14 +175,26 @@ what keeps the next person from "simplifying" it back into a defect.
   wholly in one non-Latin script produces nothing. Getting this wrong
   makes the tool unusable on the internationalised repositories that most
   need it, and once it is switched off, so is the Trojan Source screen.
-- **Declaring a script turns the checks on, never off.** The
-  `intentional_script_context` share is measured over the **undeclared**
-  scripts alone. Measuring every non-Latin letter and naming only the
-  undeclared ones refused a file the caller had already accounted for —
-  which meant declaring the script a repository is written in disabled
-  the homoglyph check for every file in it, exactly where one would hide.
-  Pinned by `the_share_is_measured_over_the_undeclared_scripts_only` and
+- **Declaring a script turns the checks on, never off — and never on
+  harder.** The `intentional_script_context` share is measured over the
+  **undeclared** scripts alone. Measuring every non-Latin letter and
+  naming only the undeclared ones refused a file the caller had already
+  accounted for — which meant declaring the script a repository is
+  written in disabled the homoglyph check for every file in it, exactly
+  where one would hide. Pinned by
+  `the_share_is_measured_over_the_undeclared_scripts_only` and
   `a_declared_file_is_judged_and_its_homoglyph_is_still_found`.
+
+  **`scripts::judge` got the same direction wrong twice**, so the
+  property is now stated on its own:
+  `declaring_a_script_never_adds_a_finding`. The second time, a word that
+  mixed an undeclared script with Latin returned early and never reached
+  the compatibility check, so declaring a script *added* four findings on
+  `設ＦＩＬＥ`. **A compatibility form is not a script question** — a
+  full-width `Ｆ` reads as `F` in any file — and the guard against a
+  third occurrence is structural rather than a comment: `compatibility`
+  does not take the declared scripts as a parameter, so nothing can gate
+  it by them. Only `mixing` may see them.
 - **Columns are UTF-16 code units and lookups are checkpointed.**
   UTF-16 is what an editor's ruler shows. Counting them from the line
   start on every lookup is quadratic on a minified bundle — one line
@@ -429,17 +441,3 @@ enforced by review until that job exists.
   backslash is an ordinary character where `C:\Привет` is a path.
   Resolving it needs a grammar that says so, and this crate has one for
   JSON and for nothing else it reads. `--kind` narrows it away.
-- **A compatibility form inside a mixed word is not reported as a
-  `confusable`.** `scripts::judge` answers a word that mixes an
-  undeclared script with Latin by returning the `mixed-script` finding
-  and its homoglyphs, and never reaches the compatibility check below —
-  so `設ＦＩＬＥ` in an otherwise Latin file is one `mixed-script`
-  finding undeclared and four `confusable` ones under `--script Han`.
-  Nothing is missed at the level of "is this word flagged", both being
-  `high`, but `--kind confusable` answers nothing on that word until a
-  script is declared, which is the opposite of the direction declaring is
-  supposed to move a check. It also sits against SPEC.md's "a
-  compatibility form is not a script question and is reported either
-  way". **Unresolved: whether the compatibility check should run on a
-  mixed word as well, or the claim should be narrowed to the axis it was
-  written about.**
