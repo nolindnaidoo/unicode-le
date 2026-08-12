@@ -134,3 +134,166 @@ jobs:
         with:
           tool: cargo-audit
       - run: cargo audit
+
+  # ---------------------------------------------------------------------
+  # The five below exist because something real got through a green suite.
+  # Each one names the bug it exists to catch.
+  #
+  # None of them touches the network — this crate never does. What they
+  # reach that the unit tests cannot is a real filesystem, a second
+  # operating system, text nobody would type, and a clock.
+  # ---------------------------------------------------------------------
+
+  # Inputs a real repository holds and a fixture directory cannot: a
+  # byte-order mark, a file that is not UTF-8, a UTF-16 catalogue, a
+  # FIFO, a file the caller cannot read, a path over 260 characters, a
+  # symlink loop, an empty file, and a minified bundle that is one line.
+  # The tree is built at runtime because Windows cannot check half of it
+  # into git, and every case the platform cannot express is skipped by
+  # name.
+  #
+  # Found by writing it: a PNG header carries no NUL, so the binary sniff
+  # was not what refused one; and the report echoes a file *name*
+  # verbatim, which is the one string in the output the report-safety
+  # rule does not cover (recorded in AGENTS.md, pinned by the suite).
+  hazards:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - name: Hazardous inputs against the built binary
+        run: cargo test --locked --test hazards -- --nocapture
+
+  # Behaviour that differs by operating system. envsync-le shipped a
+  # release whose report used `\` on Windows and `/` everywhere else, so
+  # the whole family now asserts it — and this crate carries a path per
+  # file in the report plus one per finding on stderr, which is more
+  # surface for that bug than most of the family has. It was present here
+  # and `scan::report_path` is the fix.
+  #
+  # Also: case folding, the Windows device names, CRLF against a lone CR,
+  # and stdin closing under the tool's feet.
+  platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - name: Paths, case folding, reserved names, line endings and stdin
+        run: cargo test --locked --test platform -- --nocapture
+      # Windows ignores TZ entirely, so a suite that quietly depended on
+      # it would be red there and nowhere else. Both runs are compared
+      # line for line rather than merely required to pass.
+      - name: The suite answers the same with TZ set and unset
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Names and outcomes, not the summary lines: those carry a
+          # duration, and two runs of the same suite never agree on one.
+          names() { grep -E '^test ' | grep -v '^test result:' | sort; }
+          TZ=UTC cargo test --locked -- --test-threads=1 2>&1 \
+            | names > "$RUNNER_TEMP/tz-utc.txt"
+          unset TZ
+          cargo test --locked -- --test-threads=1 2>&1 \
+            | names > "$RUNNER_TEMP/tz-unset.txt"
+          test -s "$RUNNER_TEMP/tz-utc.txt"
+          diff -u "$RUNNER_TEMP/tz-utc.txt" "$RUNNER_TEMP/tz-unset.txt"
+
+  # The corpus pins documents somebody thought of; this generates the
+  # ones nobody did and feeds them to `detect_unicode_risks`, which takes
+  # a document and touches no filesystem.
+  #
+  # Aimed at this crate's own ways of being wrong rather than the usual
+  # parser hazards: two indexing schemes over one string (byte offsets in
+  # the scanners, UTF-16 code units in the report), grapheme clusters
+  # with no bound, words made entirely of combining marks, and bidi
+  # controls in the one position that is a special case — the first byte,
+  # where U+FEFF is an encoding rather than a finding.
+  #
+  # Every answer must be well-formed, ordered, on real character
+  # boundaries, and ASCII. That last one is the product: a report that
+  # quoted what it found would be the delivery mechanism for it.
+  fuzz:
+    runs-on: ubuntu-24.04
+    env:
+      UNICODE_LE_FUZZ_SECONDS: '60'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - name: Sixty seconds of hostile text
+        run: cargo test --locked --test fuzz -- --test-threads=1 --nocapture
+
+  # A wall-clock ceiling on a corpus generated from a fixed seed, plus
+  # two linearity checks: four times the documents, and four times the
+  # content in one document.
+  #
+  # The second is the one that catches a quadratic, and this crate had
+  # one. ips-le found the shape first: a UTF-16 column index that
+  # re-counts from the line start on every lookup. Invisible on a config
+  # file, fatal on a minified bundle — one line holding the whole
+  # document, one lookup per finding. 20,000 findings on such a line took
+  # 21.8s before the fix and 0.33s after, and the single-line linearity
+  # test measures 13.02x against a 6x limit with the fix reverted.
+  #
+  # The corpus is non-ASCII by construction: an ASCII document needs no
+  # code-unit counting at all and takes a path where the bug cannot
+  # exist.
+  budget:
+    runs-on: ubuntu-24.04
+    env:
+      UNICODE_LE_BUDGET: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - name: 300 documents inside the budget, and linear in both directions
+        run: cargo test --locked --test budget -- --test-threads=1 --nocapture
+
+  # Does the crate open what it claims?
+  #
+  # The extractor crates in this family answer that with one fixture per
+  # extension in their alias table. **This crate has no format table** —
+  # it reads every text file and has no opinion about the name — so the
+  # job is adapted rather than dropped: what it publishes instead is a
+  # vocabulary, and every `kind`, `severity` and `reason` in it is a
+  # claim that this tool can produce that value. Each must be reachable
+  # from a real fixture, because a value nothing reaches inflates what
+  # the tool says it covers and makes a consumer handle a case that never
+  # arrives.
+  #
+  # The marker check is not decoration: `cargo test <filter>` exits 0
+  # when the filter matches nothing, so a renamed test would pass this
+  # job silently.
+  coverage-matrix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - name: Every kind, severity and refusal reason
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --locked --bins coverage_matrix -- --nocapture 2>&1 \
+            | tee "$RUNNER_TEMP/coverage-matrix.txt"
+          grep -q 'coverage-matrix: 7 kinds reachable from fixtures' \
+            "$RUNNER_TEMP/coverage-matrix.txt"
+          grep -q 'coverage-matrix: 3 severities reachable from fixtures' \
+            "$RUNNER_TEMP/coverage-matrix.txt"
+          grep -q 'coverage-matrix: 3 refusal reasons reachable from fixtures' \
+            "$RUNNER_TEMP/coverage-matrix.txt"
