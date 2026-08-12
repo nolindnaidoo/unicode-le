@@ -58,7 +58,7 @@ use super::{Draft, Kind, Reason, Refusal, Severity, codepoint};
 /// an English document is a tenth of one percent. Anywhere between those
 /// two separates "this file is written in another script" from "this
 /// file mentions one", and ten is comfortably inside it.
-const FOREIGN_SHARE_PERCENT: usize = 10;
+const FOREIGN_SHARE_PERCENT: u128 = 10;
 
 /// Notation that folds to an ASCII character and is not impersonating
 /// one. `2ª`, `x²` and `Hₙ` are ordinary writing; reporting the ordinal
@@ -88,11 +88,9 @@ pub(crate) fn context(content: &str, expected: &[Script]) -> Option<Refusal> {
     if found.is_empty() {
         return None;
     }
-    // Percentages, not floats: the comparison has to be the same on
-    // every platform, and a report that flipped on a rounding difference
-    // would be a report nobody could reproduce.
     let undeclared: usize = found.iter().map(|(_, count)| *count).sum();
-    if undeclared * 100 < letters * FOREIGN_SHARE_PERCENT {
+    let share = foreign_share_percent(undeclared, letters);
+    if share < FOREIGN_SHARE_PERCENT {
         return None;
     }
 
@@ -101,15 +99,38 @@ pub(crate) fn context(content: &str, expected: &[Script]) -> Option<Refusal> {
     Some(Refusal {
         reason: Reason::IntentionalScriptContext,
         detail: format!(
-            "{}% of this file's letters are {}, {}. The confusable and mixed-script checks did \
-             not run here: in a file written in another script there is nothing to tell a forged \
-             name from a translated one, and answering anyway would bury the real findings. Every \
-             other check did run.",
-            undeclared * 100 / letters.max(1),
+            "{share}% of this file's letters are {}, {}. The confusable and mixed-script checks \
+             did not run here: in a file written in another script there is nothing to tell a \
+             forged name from a translated one, and answering anyway would bury the real \
+             findings. Every other check did run.",
             join_names(&names),
             declaration(expected)
         ),
     })
+}
+
+/// The share of a file's letters that the undeclared scripts account for,
+/// as a whole percentage.
+///
+/// **Percentages, not floats.** The comparison has to be identical on
+/// every platform; a report that flipped on a rounding difference is a
+/// report nobody can reproduce.
+///
+/// **One arithmetic path for the decision and the message**, so the
+/// refusal cannot say "9%" while refusing at ten. Truncation is exact for
+/// that: `floor(u * 100 / l) >= P` holds exactly when `u * 100 >= l * P`.
+///
+/// **Widened past `usize` before multiplying.** `usize` is 32 bits on
+/// some targets this crate builds for, where `undeclared * 100` wraps at
+/// a file of roughly 43 million letters. `overflow-checks = true` turns
+/// that into a panic rather than a wrong number, which is the right
+/// failure and still a failure: this tool answers or refuses by name, and
+/// a scanner that aborts on a large file does neither. `u128` cannot
+/// overflow here for any input a filesystem can hold.
+fn foreign_share_percent(undeclared: usize, letters: usize) -> u128 {
+    // `letters` is zero only when the file holds no letters at all, and
+    // then `found` is empty and the caller has already returned.
+    undeclared as u128 * 100 / (letters.max(1)) as u128
 }
 
 /// The clause after the script names. A caller who declared nothing is
@@ -791,6 +812,51 @@ mod tests {
     fn a_single_foreign_word_does_not_refuse_the_file() {
         let mostly_english = format!("{} Привет", "the quick brown fox ".repeat(20));
         assert!(context(&mostly_english, &[]).is_none());
+    }
+
+    /// **The share cannot overflow.** `usize` is 32 bits on some targets
+    /// this crate builds for, and there `undeclared * 100` wraps at about
+    /// 43 million letters — a 43 MB file, well inside what a tool pointed
+    /// at a repository meets. `overflow-checks = true` makes that a panic
+    /// rather than a wrong number, which is the right failure and still a
+    /// failure: this crate answers or refuses by name, and aborting is
+    /// neither.
+    ///
+    /// The counts below overflow a **64-bit** `usize` too, so the test
+    /// fails on any host where the widening is missing rather than only
+    /// on the target that would meet it in the field.
+    #[test]
+    fn the_share_cannot_overflow_on_a_large_file() {
+        // Divisible by 200, so the halves and tenths below are exact and
+        // the assertions are about the widening rather than about
+        // truncation. `huge / 2 * 100` overflows a 64-bit `usize`.
+        let huge = usize::MAX / 200 * 200;
+        assert_eq!(foreign_share_percent(huge, huge), 100);
+        assert_eq!(foreign_share_percent(huge / 2, huge), 50);
+        assert_eq!(foreign_share_percent(0, huge), 0);
+        assert_eq!(foreign_share_percent(huge / 10, huge), 10);
+
+        // The count a 32-bit target actually meets: `u32::MAX / 100`.
+        let thirty_two_bit = u32::MAX as usize / 100 + 1;
+        assert_eq!(foreign_share_percent(thirty_two_bit, thirty_two_bit), 100);
+    }
+
+    /// The decision and the number the refusal prints are one
+    /// computation, so a refusal can never report a share below the
+    /// threshold it refused at. Held over every ratio up to two hundred
+    /// letters rather than argued about: truncation is exact here, and
+    /// "exact" is the sort of claim that is worth checking.
+    #[test]
+    fn the_reported_share_agrees_with_the_decision_everywhere() {
+        for letters in 1..200usize {
+            for undeclared in 0..=letters {
+                let share = foreign_share_percent(undeclared, letters);
+                let refuses = share >= FOREIGN_SHARE_PERCENT;
+                let exact = undeclared as u128 * 100 >= letters as u128 * FOREIGN_SHARE_PERCENT;
+                assert_eq!(refuses, exact, "{undeclared} of {letters}");
+                assert!(share <= 100, "{undeclared} of {letters} is {share}%");
+            }
+        }
     }
 
     #[test]

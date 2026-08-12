@@ -107,6 +107,14 @@ the two frontends the way it is in the sibling repos.
   over the undeclared scripts only, the clause is conditional, and a
   declared file is judged — a Cyrillic `а` in a Latin word inside a
   declared-Japanese file is found.
+- **The script share cannot overflow.** It multiplied two `usize` counts,
+  which wraps on a 32-bit target at about 43 million letters — a 43 MB
+  file of text, well inside what a repository holds. `overflow-checks =
+  true` made that a panic rather than a wrong number, which is the right
+  failure and still a failure: this tool answers or refuses by name, and
+  aborting does neither. Widened to `u128`, and the decision and the
+  percentage the refusal prints are one computation now, so the message
+  cannot read below the threshold it refused at.
 - **A compatibility form inside a mixed word is reported.** `judge`
   answered two questions as one either/or: a word that mixed an
   undeclared script with Latin returned its `mixed-script` finding and

@@ -101,6 +101,14 @@ unfixed code:
 - The `intentional_script_context` share was counted over every non-Latin
   letter and attributed to the undeclared scripts alone, so declaring a
   script refused the file it was meant to unlock.
+- The `intentional_script_context` share multiplied two `usize` counts,
+  which overflows on a 32-bit target at a file of roughly 43 million
+  letters — a 43 MB file of text, well inside what a repository holds.
+  `overflow-checks = true` made that a panic rather than a wrong number,
+  which is the right failure and still a failure: this crate answers or
+  refuses by name, and aborting is neither. Widened to `u128`, and the
+  decision and the percentage the refusal prints are now one computation,
+  so a refusal cannot report a share below the threshold it refused at.
 - A compatibility form inside a word that also mixed scripts was not
   reported as a `confusable`. `judge` answered the two questions as one
   either/or: a mixed word returned its `mixed-script` finding and never
