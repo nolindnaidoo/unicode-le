@@ -70,7 +70,7 @@ fn rewrite(value: &str) -> String {
     if value.is_ascii() {
         return value.to_string();
     }
-    let mut out = String::with_capacity(value.len());
+    let mut out = String::with_capacity(value.len() + widening(value));
     for character in value.chars() {
         if character.is_ascii() {
             out.push(character);
@@ -82,6 +82,29 @@ fn rewrite(value: &str) -> String {
         }
     }
     out
+}
+
+/// How many bytes longer the escaped form is than the original.
+///
+/// **Exact, from one pass, rather than a multiplier.** `value.len()`
+/// alone under-allocates by a factor of three in the worst case — a
+/// two-byte character leaves as six ASCII ones — and reserving three
+/// times the length instead would over-allocate by the same factor on the
+/// case that actually reaches here: a whole serialized report, tens of
+/// megabytes of ASCII, holding one hostile path. Counting first costs a
+/// scan and makes the buffer the right size, so nothing is copied twice
+/// and nothing is held that is not needed.
+///
+/// Each non-ASCII character leaves as `\uXXXX` per UTF-16 code unit: six
+/// bytes for one, twelve for a surrogate pair. Six is already larger than
+/// the four bytes any character occupies, so the subtraction cannot go
+/// below zero.
+fn widening(value: &str) -> usize {
+    value
+        .chars()
+        .filter(|character| !character.is_ascii())
+        .map(|character| character.len_utf16() * 6 - character.len_utf8())
+        .sum()
 }
 
 #[cfg(test)]
@@ -150,6 +173,46 @@ mod tests {
                 serde_json::from_str(&escaped).expect("the escaped document is still JSON");
             assert_eq!(parsed["file"], path, "{escaped}");
         }
+    }
+
+    /// **The buffer is the size of the answer.** Sized by `value.len()`
+    /// alone this reallocated and copied its way through anything with
+    /// non-ASCII in it, which for `json` is a whole serialized report;
+    /// sized by a multiplier it would hold three times what it needs on
+    /// the ordinary case, a large ASCII report with one hostile path in
+    /// it. Asserted rather than reasoned about, because a capacity that
+    /// silently drifted from the transform is invisible.
+    #[test]
+    fn the_buffer_is_allocated_once_and_exactly() {
+        for value in [
+            "invoice\u{202E}fdp.ts",
+            "\u{4e2d}\u{6587}/\u{1D41A}.md",
+            "caf\u{e9}",
+            "\u{10FFFD}",
+            &format!("{}\u{202E}{}", "a".repeat(10_000), "b".repeat(10_000)),
+        ] {
+            let escaped = text(value);
+            let named = value.chars().take(4).collect::<String>();
+            assert_eq!(
+                value.len() + widening(value),
+                escaped.len(),
+                "the count is not the answer's length for {named:?}"
+            );
+            // `String` never shrinks on its own, so a capacity past the
+            // length is a buffer that grew — which is the reallocation
+            // and copy this reservation exists to avoid. Reads through
+            // `with_capacity` reserving exactly what it is asked for,
+            // which is not a documented guarantee; if that ever changes
+            // this fails loudly rather than drifting quietly.
+            assert_eq!(
+                escaped.capacity(),
+                escaped.len(),
+                "the buffer grew while escaping {named:?}"
+            );
+        }
+        // ASCII takes the early return and reserves nothing extra.
+        assert_eq!(widening("src/a.ts"), 0);
+        assert_eq!(widening(""), 0);
     }
 
     /// A document whose *structure* is ASCII and whose strings are not

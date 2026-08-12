@@ -101,6 +101,13 @@ unfixed code:
 - The `intentional_script_context` share was counted over every non-Latin
   letter and attributed to the undeclared scripts alone, so declaring a
   script refused the file it was meant to unlock.
+- `escape` reserved the length of its input and then wrote up to three
+  times that, so every path with a non-ASCII byte in it reallocated and
+  copied its way to the answer — and for `escape::json` the input is the
+  whole serialized report. It counts the widening in one pass now and
+  reserves the exact answer. A multiplier was the other option and is
+  worse here: three times the length of a large ASCII report holding one
+  hostile path is three times what is needed.
 - A JSON escape span could end inside a character. An escape's width is
   counted in bytes, and a malformed document can put a multi-byte
   character inside one (`"\П"`), so the raw arithmetic ended a range
