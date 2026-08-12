@@ -97,8 +97,30 @@ pub(crate) fn report(files: Vec<FileReport>) -> Report {
     }
 }
 
+/// The path as the report spells it: **separated by `/` on every
+/// platform**.
+///
+/// A report is diffed against one produced on another machine and read
+/// by someone who does not have the tree. A sibling in this family
+/// shipped `\` on Windows for a whole release, which made every path in
+/// a Windows report differ from the same path in a Linux one for no
+/// reason a reader could see — and here it would also make the stderr
+/// line unfindable by the grep that works everywhere else.
+#[cfg(windows)]
+fn report_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+/// The path as the report spells it. Nothing to rewrite here: `\` is a
+/// legal character in a Unix filename, and replacing it would rename the
+/// file in the report.
+#[cfg(not(windows))]
+fn report_path(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
 pub(crate) fn scan_file(path: &Path, options: &Options) -> FileReport {
-    let file = path.to_string_lossy().into_owned();
+    let file = report_path(path);
     match std::fs::read(path) {
         Ok(bytes) => scan_bytes(&bytes, file, options),
         // Reported rather than dropped. A file that vanishes from the
@@ -271,6 +293,22 @@ mod tests {
         let scanned = report(vec![scan_file(&file, &Options::default())]);
         assert_eq!(exit_code(&scanned, FailOn::Any, false), 0);
         assert_eq!(exit_code(&scanned, FailOn::Any, true), 2);
+    }
+
+    /// A report is diffed across machines. A path that changes its
+    /// separator with the operating system makes every line of a Windows
+    /// report differ from the same line of a Linux one, and makes the
+    /// stderr line unfindable by a grep that works everywhere else.
+    #[test]
+    fn a_reported_path_is_separated_by_forward_slashes_everywhere() {
+        let tree = TempTree::new("scan-separator");
+        let file = tree.write("src/nested/a.ts", "const ok = 1;\n");
+        let reported = scan_file(&file, &Options::default()).file;
+        assert!(
+            reported.ends_with("src/nested/a.ts"),
+            "the report spells the path {reported}"
+        );
+        assert!(!reported.contains('\\'), "{reported}");
     }
 
     #[test]
