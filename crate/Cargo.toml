@@ -34,7 +34,9 @@ path = "src/main.rs"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # UAX #39 — confusable skeletons, mixed-script resolution, restriction
-# levels — from unicode-rs, MIT/Apache-2.0, on Unicode 15.1 data.
+# levels — from unicode-rs, MIT/Apache-2.0, on Unicode 16.0 data
+# (`UNICODE_VERSION` in its generated tables; SPEC.md records what that
+# costs against `unicode-script`, which is on 17.0).
 #
 # This is the whole reason the crate is small. UAX #39 is a *data*
 # standard: confusables.txt is 6000-odd mappings that move with every
