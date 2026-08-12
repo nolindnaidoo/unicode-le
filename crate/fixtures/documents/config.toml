@@ -1,0 +1,3 @@
+[server.limits]
+note = "a price: 10"
+port = 8080

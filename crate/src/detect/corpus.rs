@@ -14,7 +14,34 @@ use super::{Finding, Kind, Options, Reason, Severity, encoding, examine, scripts
 
 const DETECTION: &str = include_str!("../../fixtures/detection.json");
 
-const TEXT_DOCUMENTS: [(&str, &str); 13] = [
+const TEXT_DOCUMENTS: [(&str, &str); 19] = [
+    // One per key-path reader. Each holds a real finding in a real
+    // structure, because the claim being pinned is that the reader names
+    // where it sits and not merely that the reader runs.
+    (
+        "messages.json",
+        include_str!("../../fixtures/documents/messages.json"),
+    ),
+    (
+        "config.yaml",
+        include_str!("../../fixtures/documents/config.yaml"),
+    ),
+    (
+        "config.toml",
+        include_str!("../../fixtures/documents/config.toml"),
+    ),
+    (
+        "settings.ini",
+        include_str!("../../fixtures/documents/settings.ini"),
+    ),
+    (
+        "secrets.env",
+        include_str!("../../fixtures/documents/secrets.env"),
+    ),
+    (
+        "rows.csv",
+        include_str!("../../fixtures/documents/rows.csv"),
+    ),
     (
         "trojan-source.c",
         include_str!("../../fixtures/documents/trojan-source.c"),
@@ -137,7 +164,15 @@ fn options(scripts: &[String]) -> Options {
             .iter()
             .map(|tag| parse_script(tag).expect("a script the corpus names"))
             .collect(),
+        format: None,
     }
+}
+
+/// The format a fixture is read as, from its own name — the same
+/// resolution the CLI does, so the corpus pins what a caller gets rather
+/// than a laboratory setting.
+fn format_of(file: &str) -> &'static str {
+    super::format::resolve_format(None, Some(file))
 }
 
 #[test]
@@ -146,7 +181,11 @@ fn every_document_case_reproduces() {
     assert!(!corpus.documents.is_empty(), "the corpus is empty");
 
     for case in corpus.documents {
-        let examination = examine(document(&case.file), &options(&case.scripts));
+        let examination = examine(
+            document(&case.file),
+            format_of(&case.file),
+            &options(&case.scripts),
+        );
         assert_eq!(examination.findings, case.expected, "{}", case.name);
         assert_eq!(
             examination
@@ -185,7 +224,7 @@ fn every_encoding_case_reproduces() {
 #[test]
 fn no_translation_produces_a_confusable_or_mixed_script_finding() {
     for name in NON_LATIN {
-        let findings = examine(document(name), &Options::default()).findings;
+        let findings = examine(document(name), format_of(name), &Options::default()).findings;
         let script_findings: Vec<Kind> = findings
             .iter()
             .map(|finding| finding.kind)
@@ -216,7 +255,7 @@ fn a_declared_translation_is_judged_and_is_still_clean() {
             ],
         ),
     ] {
-        let examination = examine(document(name), &options(&scripts));
+        let examination = examine(document(name), format_of(name), &options(&scripts));
         assert!(examination.refusals.is_empty(), "{name} was still refused");
         assert!(
             examination.findings.is_empty(),
@@ -327,7 +366,7 @@ fn reason_name(reason: Reason) -> &'static str {
 fn findings_from_every_fixture() -> Vec<Finding> {
     TEXT_DOCUMENTS
         .iter()
-        .flat_map(|(_, content)| examine(content, &Options::default()).findings)
+        .flat_map(|(name, content)| examine(content, format_of(name), &Options::default()).findings)
         .collect()
 }
 
@@ -374,7 +413,7 @@ fn coverage_matrix_every_severity_is_reachable_from_a_fixture() {
 fn coverage_matrix_every_refusal_reason_is_reachable_from_a_fixture() {
     let mut reached: Vec<Reason> = TEXT_DOCUMENTS
         .iter()
-        .flat_map(|(_, content)| examine(content, &Options::default()).refusals)
+        .flat_map(|(name, content)| examine(content, format_of(name), &Options::default()).refusals)
         .map(|refusal| refusal.reason)
         .collect();
     reached.extend(
@@ -398,5 +437,53 @@ fn coverage_matrix_every_refusal_reason_is_reachable_from_a_fixture() {
     eprintln!(
         "coverage-matrix: {} refusal reasons reachable from fixtures",
         REASONS.len()
+    );
+}
+
+/// **Does the crate open what it claims?**
+///
+/// Every format the tool schema offers must be *productive*: a real
+/// fixture is read as that format and comes back with a finding that
+/// carries a key path. A reader offered and never exercised inflates
+/// what the tool says it covers, and a reader that silently stopped
+/// naming anything would otherwise pass every other test in this file —
+/// because a lost key path costs no finding, which is the whole point of
+/// the design and also exactly what makes it easy to lose quietly.
+///
+/// `text` is productive in the opposite way, and is asserted the
+/// opposite way: it must produce findings and **no** key at all.
+#[test]
+fn coverage_matrix_every_format_reader_is_reachable_from_a_fixture() {
+    let mut keyed: Vec<&str> = Vec::new();
+    let mut plain = 0usize;
+
+    for (name, content) in TEXT_DOCUMENTS {
+        let format = format_of(name);
+        let findings = examine(content, format, &Options::default()).findings;
+        if format == super::format::FALLBACK_FORMAT {
+            plain += findings.iter().filter(|f| f.key.is_some()).count();
+            continue;
+        }
+        if findings.iter().any(|finding| finding.key.is_some()) {
+            keyed.push(format);
+        }
+    }
+    assert_eq!(plain, 0, "the plain-text reader invented a key path");
+
+    for format in super::format::SUPPORTED_FORMATS {
+        if format == super::format::FALLBACK_FORMAT {
+            // Reachable by construction: everything unrecognised is it,
+            // and the corpus is mostly `.ts`, `.c`, `.py` and `.md`.
+            continue;
+        }
+        assert!(
+            keyed.contains(&format),
+            "no fixture document is read as {format} and produces a keyed finding: {keyed:?}"
+        );
+    }
+
+    eprintln!(
+        "coverage-matrix: {} format readers reachable from fixtures",
+        super::format::SUPPORTED_FORMATS.len()
     );
 }

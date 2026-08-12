@@ -41,6 +41,14 @@ the claims the README makes.
   no-break space inside a string and is.
 - **`private-use.txt` carries U+E000 and U+0378** — one private-use, one
   unassigned. They share a kind and must not share a reason.
+- **One document per key-path reader**, and each holds a real finding in
+  a real structure: `messages.json` (nested three deep, plus an escape
+  sequence that must *not* read as a mixed word), `config.yaml`,
+  `config.toml`, `settings.ini`, `secrets.env` and `rows.csv`. The
+  coverage matrix asserts every offered format is reachable from one of
+  them and comes back carrying a key path. That matters more than it
+  looks: a lost key path costs no finding by design, so a reader that
+  quietly stopped naming anything would pass every other test here.
 - **`utf16le.txt`, `binary.dat` and `latin1.txt` are stored as bytes**,
   because that is the whole point of them: a fixture stored as a string
   would already have been decoded, which is the thing being refused.

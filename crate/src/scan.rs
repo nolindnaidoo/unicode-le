@@ -144,7 +144,12 @@ pub(crate) fn scan_bytes(bytes: &[u8], file: String, options: &Options) -> FileR
 }
 
 pub(crate) fn scan_content(content: &str, file: String, options: &Options) -> FileReport {
-    let examination = detect::examine(content, options);
+    // The name the report already carries is what names the format, so
+    // there is one path string and no second idea of what this file is.
+    // An extension nobody recognises resolves to the plain-text reader,
+    // which loses the key paths and keeps every finding.
+    let format = detect::format::resolve_format(options.format.as_deref(), Some(&file));
+    let examination = detect::examine(content, format, options);
     let summary = Counts {
         findings: examination.findings.len(),
         bidi: examination
@@ -197,13 +202,22 @@ pub(crate) fn exit_code(report: &Report, fail_on: FailOn, strict: bool) -> u8 {
 /// not author, the path, is escaped here for the same reason.
 pub(crate) fn describe(report: &FileReport, finding: &Finding) -> String {
     format!(
-        "{}:{}:{}  [{}] {} {}  {}",
+        "{}:{}:{}  [{}] {} {}{}  {}",
         crate::escape::text(&report.file),
         finding.position.line,
         finding.position.column,
         severity_name(finding.severity),
         finding.kind.name(),
         finding.codepoints.join(" "),
+        // The document's own name for the place, where it has one. A
+        // key is text out of the document, so it goes through the same
+        // escape as the path: a locale catalogue can hold a key with a
+        // bidi control in it as easily as a value can.
+        finding
+            .key
+            .as_deref()
+            .map(|key| format!("  at {}", crate::escape::text(key)))
+            .unwrap_or_default(),
         finding.detail
     )
 }

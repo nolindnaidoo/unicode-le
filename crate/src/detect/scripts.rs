@@ -161,8 +161,12 @@ fn survey(content: &str) -> (usize, Vec<(Script, usize)>) {
     (letters, found)
 }
 
-pub(crate) fn scan(content: &str, expected: &[Script]) -> Vec<Draft> {
-    words(content)
+pub(crate) fn scan(
+    content: &str,
+    expected: &[Script],
+    escapes: &[std::ops::Range<usize>],
+) -> Vec<Draft> {
+    words(content, escapes)
         .into_iter()
         .flat_map(|(offset, word)| judge(offset, word, expected))
         .collect()
@@ -331,11 +335,21 @@ fn resembles(character: char) -> Option<Vec<char>> {
 /// word in ordinary prose. Not UAX #29 word segmentation: that splits
 /// `snake_case` into three and would judge each fragment separately,
 /// which is precisely the mixing this needs to see.
-fn words(content: &str) -> Vec<(usize, &str)> {
+///
+/// `escapes` are byte ranges that no word may be built across, supplied
+/// by the format reader and empty for every format but JSON. That is
+/// what resolves the crate's one documented false positive: in
+/// `"Hello\nПривет"` the bytes really are a Latin `n` against Cyrillic,
+/// and in a `.txt` file that is the honest reading, because a backslash
+/// is an ordinary character there. In a JSON string the grammar says
+/// `\n` is a line feed, so the `n` is not a letter and the word ends
+/// before it. **Only a reader that knows the escape rule may claim
+/// this**; nothing here guesses one.
+fn words<'a>(content: &'a str, escapes: &[std::ops::Range<usize>]) -> Vec<(usize, &'a str)> {
     let mut words = Vec::new();
     let mut start: Option<usize> = None;
     for (offset, character) in content.char_indices() {
-        if is_word_character(character) {
+        if is_word_character(character) && !in_escape(escapes, offset) {
             let _ = start.get_or_insert(offset);
             continue;
         }
@@ -347,6 +361,18 @@ fn words(content: &str) -> Vec<(usize, &str)> {
         words.push((begin, &content[begin..]));
     }
     words
+}
+
+/// Whether a byte offset falls inside an escape sequence. A binary
+/// search: the ranges are non-overlapping and in document order, and a
+/// linear scan per character would make the splitter quadratic on a
+/// document full of escapes.
+fn in_escape(escapes: &[std::ops::Range<usize>], offset: usize) -> bool {
+    let after = escapes.partition_point(|span| span.start <= offset);
+    after
+        .checked_sub(1)
+        .and_then(|index| escapes.get(index))
+        .is_some_and(|span| offset < span.end)
 }
 
 fn is_word_character(character: char) -> bool {
@@ -393,7 +419,7 @@ mod tests {
     use super::*;
 
     fn kinds(content: &str) -> Vec<Kind> {
-        scan(content, &[])
+        scan(content, &[], &[])
             .into_iter()
             .map(|draft| draft.kind)
             .collect()
@@ -445,7 +471,7 @@ mod tests {
     #[test]
     fn a_cyrillic_letter_in_a_latin_word_is_found_twice() {
         // `pаypal` — the second character is U+0430, not U+0061.
-        let found = scan("const p\u{430}ypal = 1;", &[]);
+        let found = scan("const p\u{430}ypal = 1;", &[], &[]);
         assert_eq!(
             found.iter().map(|d| d.kind).collect::<Vec<_>>(),
             [Kind::MixedScript, Kind::Confusable]
@@ -461,7 +487,7 @@ mod tests {
     #[test]
     fn a_greek_letter_in_a_latin_word_is_found() {
         // `lοgin` — the second character is U+03BF.
-        let found = scan("l\u{3bf}gin", &[]);
+        let found = scan("l\u{3bf}gin", &[], &[]);
         assert_eq!(found[0].kind, Kind::MixedScript);
         assert_eq!(found[1].resembles, ["U+006F"]);
     }
@@ -469,7 +495,7 @@ mod tests {
     #[test]
     fn a_full_width_letter_is_confusable_without_any_mixing() {
         // `ＦＩＬＥ` is Latin script throughout, so nothing is mixed.
-        let found = scan("\u{FF26}\u{FF29}\u{FF2C}\u{FF25}", &[]);
+        let found = scan("\u{FF26}\u{FF29}\u{FF2C}\u{FF25}", &[], &[]);
         assert_eq!(found.len(), 4);
         assert!(found.iter().all(|d| d.kind == Kind::Confusable));
         assert_eq!(found[0].codepoints, ["U+FF26"]);
@@ -478,7 +504,7 @@ mod tests {
 
     #[test]
     fn a_mathematical_letter_is_confusable() {
-        let found = scan("\u{1d41a}dmin", &[]);
+        let found = scan("\u{1d41a}dmin", &[], &[]);
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].kind, Kind::Confusable);
         assert_eq!(found[0].resembles, ["U+0061"]);
@@ -506,7 +532,7 @@ mod tests {
     #[test]
     fn words_split_on_punctuation_and_keep_identifiers_whole() {
         assert_eq!(
-            words("let snake_case_2 = f(x);"),
+            words("let snake_case_2 = f(x);", &[]),
             [(0, "let"), (4, "snake_case_2"), (19, "f"), (21, "x")]
         );
     }
@@ -516,7 +542,7 @@ mod tests {
     /// base letter judged without it.
     #[test]
     fn a_combining_mark_stays_in_its_word() {
-        assert_eq!(words("cafe\u{301} x"), [(0, "cafe\u{301}"), (7, "x")]);
+        assert_eq!(words("cafe\u{301} x", &[]), [(0, "cafe\u{301}"), (7, "x")]);
     }
 
     /// **The measured case.** CJK has no spaces, so a product name
@@ -529,13 +555,20 @@ mod tests {
     fn latin_mixed_with_a_declared_script_is_a_translation() {
         let content = "CSVストリーミングの切り替え";
         assert_eq!(
-            scan(content, &[])
+            scan(content, &[], &[])
                 .into_iter()
                 .map(|draft| draft.kind)
                 .collect::<Vec<_>>(),
             [Kind::MixedScript, Kind::Confusable]
         );
-        assert!(scan(content, &[Script::Han, Script::Hiragana, Script::Katakana]).is_empty());
+        assert!(
+            scan(
+                content,
+                &[Script::Han, Script::Hiragana, Script::Katakana],
+                &[]
+            )
+            .is_empty()
+        );
     }
 
     /// And declaring one script is not declaring every script: the
@@ -543,7 +576,7 @@ mod tests {
     /// legitimately contains Han.
     #[test]
     fn declaring_one_script_does_not_excuse_another() {
-        let found = scan("設定 p\u{430}ypal", &[Script::Han]);
+        let found = scan("設定 p\u{430}ypal", &[Script::Han], &[]);
         assert_eq!(
             found.iter().map(|draft| draft.kind).collect::<Vec<_>>(),
             [Kind::MixedScript, Kind::Confusable]
@@ -557,18 +590,19 @@ mod tests {
     fn a_declared_script_does_not_hide_a_compatibility_form() {
         assert_eq!(confusables("\u{FF26}\u{FF29}\u{FF2C}\u{FF25}"), 4);
         assert_eq!(
-            scan("\u{FF26}\u{FF29}\u{FF2C}\u{FF25}", &[Script::Han]).len(),
+            scan("\u{FF26}\u{FF29}\u{FF2C}\u{FF25}", &[Script::Han], &[]).len(),
             4
         );
     }
 
-    /// Pinned because it looks like a bug and is not. A source file
-    /// holding `"Hello\nПривет"` contains the byte run `nПривет`, which
-    /// is a Latin letter followed by Cyrillic with nothing between. The
+    /// Pinned because it looks like a bug and is not — **in a document
+    /// whose format nobody told this crate**. A file holding
+    /// `"Hello\nПривет"` contains the byte run `nПривет`, which is a
+    /// Latin letter followed by Cyrillic with nothing between. The
     /// splitter has no language model on purpose: a backslash is an
     /// ordinary character in a `.txt`, where `C:\Привет` is a path, and
-    /// teaching it about escapes would mean guessing which language a
-    /// file is and which of its backslashes are escapes. See SPEC.md.
+    /// guessing which of a file's backslashes are escapes is the
+    /// guessing the rest of this crate refuses. See SPEC.md.
     #[test]
     fn an_escape_sequence_abutting_another_script_is_reported_as_written() {
         let found = kinds(r"Hello\nПривет");
@@ -576,6 +610,50 @@ mod tests {
         assert!(found[1..].iter().all(|kind| *kind == Kind::Confusable));
         // A space between them, and there is nothing to report.
         assert!(kinds(r"Hello\n Привет").is_empty());
+    }
+
+    /// **And the case where it stops being guessing.** Inside a JSON
+    /// string the grammar says `\n` is a line feed, so the `n` is not a
+    /// letter and the two scripts never touch. The reader supplies the
+    /// escape ranges; the splitter does not infer them.
+    #[test]
+    fn an_escape_sequence_in_a_json_string_is_not_word_material() {
+        let content = r#"{"greeting":"Hello\nПривет"}"#;
+        let escapes = super::super::locate::escape_spans(content, "json");
+        assert_eq!(escapes.len(), 1, "the reader found no escape");
+        assert!(
+            scan(content, &[], &escapes).is_empty(),
+            "the escape still glued two scripts together"
+        );
+
+        // The same bytes with no format declared are still reported, so
+        // this is the reader's knowledge and not a weakened check.
+        assert!(!scan(content, &[], &[]).is_empty());
+    }
+
+    /// A `\uXXXX` escape is six characters, and covering only the first
+    /// two would leave `0041` as word material — gluing the text either
+    /// side of it into one word rather than breaking it.
+    #[test]
+    fn a_unicode_escape_breaks_a_word_across_all_six_characters() {
+        let content = r#"{"a":"Hello\u0041Привет"}"#;
+        let escapes = super::super::locate::escape_spans(content, "json");
+        assert!(scan(content, &[], &escapes).is_empty(), "{escapes:?}");
+    }
+
+    /// The splitter still sees everything either side of an escape. A
+    /// homoglyph in the word *after* one is not excused by it.
+    #[test]
+    fn an_escape_does_not_hide_the_words_around_it() {
+        let content = r#"{"a":"one\ntwo p\u{430}ypal"}"#.replace("\\u{430}", "\u{430}");
+        let escapes = super::super::locate::escape_spans(&content, "json");
+        assert_eq!(
+            scan(&content, &[], &escapes)
+                .into_iter()
+                .map(|draft| draft.kind)
+                .collect::<Vec<_>>(),
+            [Kind::MixedScript, Kind::Confusable]
+        );
     }
 
     #[test]
@@ -661,7 +739,7 @@ mod tests {
         let expected = [Script::Han, Script::Hiragana, Script::Katakana];
         assert!(context(&content, &expected).is_none(), "still refused");
         assert_eq!(
-            scan(&content, &expected)
+            scan(&content, &expected, &[])
                 .into_iter()
                 .map(|draft| draft.kind)
                 .collect::<Vec<_>>(),
@@ -740,7 +818,7 @@ mod tests {
     #[test]
     fn no_draft_carries_the_text_it_reports() {
         for content in ["p\u{430}ypal", "\u{FF26}\u{FF29}", "\u{1d41a}dmin"] {
-            let rendered = format!("{:?}", scan(content, &[]));
+            let rendered = format!("{:?}", scan(content, &[], &[]));
             for character in content.chars().filter(|c| !c.is_ascii()) {
                 assert!(!rendered.contains(character), "{rendered}");
             }

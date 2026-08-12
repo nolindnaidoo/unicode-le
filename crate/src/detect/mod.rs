@@ -11,10 +11,18 @@
 pub(crate) mod characters;
 pub(crate) mod codepoint;
 pub(crate) mod encoding;
+pub(crate) mod format;
 pub(crate) mod normalize;
 pub(crate) mod scripts;
 
+mod csv;
+mod dotenv;
+mod ini;
+mod json;
+mod locate;
 mod position;
+mod toml;
+mod yaml;
 
 #[cfg(test)]
 pub(crate) mod corpus;
@@ -132,6 +140,15 @@ pub(crate) struct Finding {
     #[serde(flatten)]
     pub(crate) position: Position,
     pub(crate) offset: usize,
+    /// The document's own name for where this sits — a dotted key path.
+    ///
+    /// Present when the format supplies one and **absent otherwise**,
+    /// which is the honest shape: a `.md` file has no keys, and an empty
+    /// string would read as a key that is empty rather than as no key at
+    /// all. A line in a five-thousand-line catalogue is a place in a
+    /// file; `metrics.headline.eyebrow` is a place in the document.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) key: Option<String>,
     pub(crate) codepoints: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) scripts: Vec<String>,
@@ -171,12 +188,19 @@ impl std::fmt::Debug for Draft {
 }
 
 impl Draft {
-    fn locate(self, index: &PositionIndex) -> Finding {
+    /// Positions and key paths are both attached here, in one place, so
+    /// no scanner can invent its own idea of a column or of a key.
+    fn locate(self, index: &PositionIndex, spans: &[locate::KeySpan]) -> Finding {
         Finding {
             kind: self.kind,
             severity: self.severity,
             position: index.at(self.offset),
             offset: self.offset,
+            // An empty path is the document's root, which names nothing
+            // — reported as no key rather than as a key that is blank.
+            key: locate::key_at(spans, self.offset)
+                .filter(|path| !path.is_empty())
+                .map(str::to_string),
             codepoints: self.codepoints,
             scripts: self.scripts,
             resembles: self.resembles,
@@ -192,6 +216,11 @@ pub(crate) struct Options {
     pub(crate) kinds: Vec<Kind>,
     /// The non-Latin scripts this tree is expected to contain.
     pub(crate) expected_scripts: Vec<Script>,
+    /// The format to read key paths with, when the caller knows better
+    /// than the filename does. `None` resolves from the name, which is
+    /// what the CLI always wants; an MCP caller handing over a document
+    /// with no filename is the reason this exists.
+    pub(crate) format: Option<String>,
 }
 
 impl Options {
@@ -206,7 +235,13 @@ pub(crate) struct Examination {
     pub(crate) refusals: Vec<Refusal>,
 }
 
-pub(crate) fn examine(content: &str, options: &Options) -> Examination {
+/// Examine one document.
+///
+/// `format` decides **only how a finding is addressed**, never which
+/// findings exist. Every scanner below runs over the same raw text
+/// whatever it is, so a document whose format cannot be read loses its
+/// key paths and keeps every one of its findings. See `format`.
+pub(crate) fn examine(content: &str, format: &str, options: &Options) -> Examination {
     let mut drafts = characters::scan(content);
     drafts.extend(normalize::scan(content));
 
@@ -217,7 +252,11 @@ pub(crate) fn examine(content: &str, options: &Options) -> Examination {
     if options.wants(Kind::Confusable) || options.wants(Kind::MixedScript) {
         match scripts::context(content, &options.expected_scripts) {
             Some(refusal) => refusals.push(refusal),
-            None => drafts.extend(scripts::scan(content, &options.expected_scripts)),
+            None => drafts.extend(scripts::scan(
+                content,
+                &options.expected_scripts,
+                &locate::escape_spans(content, format),
+            )),
         }
     }
 
@@ -227,10 +266,11 @@ pub(crate) fn examine(content: &str, options: &Options) -> Examination {
     drafts.sort_by_key(|draft| (draft.offset, draft.kind));
 
     let index = PositionIndex::new(content);
+    let spans = locate::key_spans(content, format);
     Examination {
         findings: drafts
             .into_iter()
-            .map(|draft| draft.locate(&index))
+            .map(|draft| draft.locate(&index, &spans))
             .collect(),
         refusals,
     }
@@ -241,7 +281,7 @@ mod tests {
     use super::*;
 
     fn kinds(content: &str) -> Vec<Kind> {
-        examine(content, &Options::default())
+        examine(content, "text", &Options::default())
             .findings
             .into_iter()
             .map(|finding| finding.kind)
@@ -250,7 +290,7 @@ mod tests {
 
     #[test]
     fn a_clean_document_yields_nothing() {
-        let clean = examine("const total = 1 + 2;\n", &Options::default());
+        let clean = examine("const total = 1 + 2;\n", "text", &Options::default());
         assert!(clean.findings.is_empty());
         assert!(clean.refusals.is_empty());
     }
@@ -276,7 +316,7 @@ mod tests {
     #[test]
     fn findings_come_back_in_document_order() {
         let content = "a\u{00A0}b\u{202E}c\u{200B}d";
-        let findings = examine(content, &Options::default()).findings;
+        let findings = examine(content, "text", &Options::default()).findings;
         assert!(
             findings
                 .windows(2)
@@ -291,8 +331,8 @@ mod tests {
     #[test]
     fn the_same_document_scans_identically_twice() {
         let content = "p\u{430}ypal \u{202E} cafe\u{301}";
-        let first = examine(content, &Options::default()).findings;
-        let second = examine(content, &Options::default()).findings;
+        let first = examine(content, "text", &Options::default()).findings;
+        let second = examine(content, "text", &Options::default()).findings;
         assert_eq!(first, second);
     }
 
@@ -302,6 +342,7 @@ mod tests {
         assert_eq!(kinds(content).len(), 2);
         let only_bidi = examine(
             content,
+            "text",
             &Options {
                 kinds: vec![Kind::BidiControl],
                 ..Options::default()
@@ -316,9 +357,13 @@ mod tests {
     #[test]
     fn a_filter_that_excludes_the_script_checks_excludes_their_refusal() {
         let content = "ключ: значение\nдругой: текст";
-        assert_eq!(examine(content, &Options::default()).refusals.len(), 1);
+        assert_eq!(
+            examine(content, "text", &Options::default()).refusals.len(),
+            1
+        );
         let only_bidi = examine(
             content,
+            "text",
             &Options {
                 kinds: vec![Kind::BidiControl],
                 ..Options::default()
@@ -332,7 +377,7 @@ mod tests {
     #[test]
     fn a_refused_file_is_still_scanned_for_the_other_kinds() {
         let content = "ключ: \u{202E}значение\nдругой: текст";
-        let examination = examine(content, &Options::default());
+        let examination = examine(content, "text", &Options::default());
         assert_eq!(examination.refusals.len(), 1);
         assert!(examination.refusals[0].is_partial());
         assert_eq!(
@@ -345,10 +390,65 @@ mod tests {
         );
     }
 
+    /// **The inversion the whole format layer rests on.** A format
+    /// decides how a finding is addressed and never whether it exists,
+    /// so the same bytes read as JSON, as YAML, as a format that does
+    /// not exist and as nothing at all must yield the same findings in
+    /// the same places. Only the key differs.
+    #[test]
+    fn a_format_never_changes_which_findings_exist() {
+        let content = "{\n  \"a\": \"x\u{202E}y\",\n  \"b\": \"p\u{00A0}q\"\n}\n";
+        let baseline: Vec<(Kind, usize)> = examine(content, "text", &Options::default())
+            .findings
+            .into_iter()
+            .map(|finding| (finding.kind, finding.offset))
+            .collect();
+        assert_eq!(baseline.len(), 2, "the document must find something");
+
+        for format in ["json", "yaml", "toml", "ini", "env", "csv", "nonsense"] {
+            let found: Vec<(Kind, usize)> = examine(content, format, &Options::default())
+                .findings
+                .into_iter()
+                .map(|finding| (finding.kind, finding.offset))
+                .collect();
+            assert_eq!(found, baseline, "{format} changed the findings");
+        }
+    }
+
+    /// And the half that makes it worth having: read as its own format,
+    /// a finding is named by the document's own vocabulary rather than
+    /// by a line number in a catalogue of five thousand of them.
+    #[test]
+    fn a_finding_carries_its_key_path_when_the_format_supplies_one() {
+        let content = "{\n  \"metrics\": { \"headline\": \"x\u{202E}y\" }\n}\n";
+        let keyed = examine(content, "json", &Options::default()).findings;
+        assert_eq!(keyed[0].key.as_deref(), Some("metrics.headline"));
+
+        // The same document with no format known: same finding, no key.
+        let plain = examine(content, "text", &Options::default()).findings;
+        assert_eq!(plain[0].key, None);
+        assert_eq!(plain[0].offset, keyed[0].offset);
+    }
+
+    /// An empty path is the document's root, which names nothing. It is
+    /// reported as no key rather than as a key that is the empty string,
+    /// because a consumer branching on presence would take one for the
+    /// other.
+    #[test]
+    fn a_root_scalar_carries_no_key_rather_than_an_empty_one() {
+        let findings = examine("\"x\u{202E}y\"", "json", &Options::default()).findings;
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].key, None);
+    }
+
     #[test]
     fn the_position_and_the_offset_are_both_carried() {
-        let finding =
-            &examine("let a = 1;\nlet b = \"\u{202E}\";\n", &Options::default()).findings[0];
+        let finding = &examine(
+            "let a = 1;\nlet b = \"\u{202E}\";\n",
+            "text",
+            &Options::default(),
+        )
+        .findings[0];
         assert_eq!(finding.position.line, 2);
         assert_eq!(finding.position.column, 10);
         assert_eq!(finding.offset, 20);
@@ -396,7 +496,7 @@ mod hazards {
     /// the thing it detects.
     #[test]
     fn no_report_carries_a_character_it_found() {
-        let examination = examine(PLANTED, &Options::default());
+        let examination = examine(PLANTED, "text", &Options::default());
         assert!(
             !examination.findings.is_empty(),
             "the hazard document found nothing, so this proves nothing"
@@ -416,16 +516,47 @@ mod hazards {
     /// is nothing in it that could render as anything.
     #[test]
     fn a_report_is_ascii_and_nothing_else() {
-        let rendered = serde_json::to_string(&examine(PLANTED, &Options::default()).findings)
-            .expect("serializes");
+        let rendered =
+            serde_json::to_string(&examine(PLANTED, "text", &Options::default()).findings)
+                .expect("serializes");
         assert!(rendered.is_ascii(), "{rendered}");
+    }
+
+    /// **A key path is text out of the document**, so it is the one
+    /// field of a finding that this crate does not author — the same
+    /// shape as the file name, and the same hazard. A locale catalogue
+    /// can hold a key with a bidi control in it as easily as a value
+    /// can, and a report naming that key raw would carry it onward.
+    ///
+    /// The finding itself is allowed to hold the real characters, so a
+    /// consumer can match the key against its own document; what is
+    /// asserted is that neither stream ever prints them. `escape` does
+    /// that for both, and this pins the input that reaches it.
+    #[test]
+    fn a_key_path_is_carried_but_never_printed_raw() {
+        let document = format!("{{\"a{}b\":\"x{}y\"}}", '\u{202E}', '\u{200B}');
+        let findings = examine(&document, "json", &Options::default()).findings;
+        // Two: the override hiding in the key's own name, which carries
+        // no key path because a key is not a value region, and the
+        // zero-width space in the value, which carries one.
+        assert_eq!(findings.len(), 2);
+        assert_eq!(findings[0].key, None, "a key named itself");
+        let key = findings[1].key.as_deref().expect("a key path");
+        assert!(key.contains('\u{202E}'), "the key lost the document's text");
+
+        let rendered = serde_json::to_string(&findings).expect("serializes");
+        let escaped = crate::escape::json(&rendered);
+        assert!(escaped.is_ascii(), "{escaped}");
+        // And it still round-trips, so a consumer can match it.
+        let parsed: Vec<Finding> = serde_json::from_str(&escaped).expect("still JSON");
+        assert_eq!(parsed, findings);
     }
 
     /// Refusals are prose this crate wrote, and they quote nothing
     /// either — including the file that provoked them.
     #[test]
     fn a_refusal_is_ascii_and_nothing_else() {
-        let examination = examine("你好世界你好世界你好世界", &Options::default());
+        let examination = examine("你好世界你好世界你好世界", "text", &Options::default());
         assert_eq!(examination.refusals.len(), 1);
         assert!(examination.refusals[0].detail.is_ascii());
     }

@@ -216,6 +216,98 @@ fn a_tree_of_translations_is_refused_rather_than_flooded() {
     assert_eq!(counts["summary"]["findings"], 0);
 }
 
+/// **The key path, at the process boundary.** A bidi control in a
+/// five-thousand-line locale catalogue is a line number a reader has to
+/// go and look up; `metrics.headline.eyebrow` is a place in the
+/// document. The format comes from the file's own name — nothing is
+/// declared here — and the same bytes under a name the tool does not
+/// recognise still report the finding, without a key.
+#[test]
+fn a_finding_carries_the_key_path_its_format_supplies() {
+    let tree = Tree::new("keypath");
+    let body = format!(
+        "{{\n  \"metrics\": {{\n    \"headline\": {{\n      \"eyebrow\": \"{RLO}\"\n    }}\n  }}\n}}\n"
+    );
+    tree.write("locales/en.json", &body);
+    tree.write("notes.md", &body);
+
+    let run = run(&[&tree.path().to_string_lossy()]);
+    assert_eq!(run.code, 1, "{}", run.stderr);
+    let report = report(&run);
+
+    let files = report["files"].as_array().expect("a file list");
+    let named = |suffix: &str| {
+        files
+            .iter()
+            .find(|file| {
+                file["file"]
+                    .as_str()
+                    .is_some_and(|found| found.replace('\\', "/").ends_with(suffix))
+            })
+            .unwrap_or_else(|| panic!("{suffix} is not in the report: {}", run.stdout))
+    };
+    let json = named("locales/en.json");
+    let markdown = named("notes.md");
+
+    assert_eq!(
+        json["findings"][0]["key"], "metrics.headline.eyebrow",
+        "{}",
+        run.stdout
+    );
+    // The same finding either way. A format that could not be read costs
+    // a key path and never a finding.
+    assert_eq!(markdown["findings"][0]["key"], serde_json::Value::Null);
+    assert_eq!(
+        markdown["findings"][0]["offset"],
+        json["findings"][0]["offset"]
+    );
+    assert_eq!(report["summary"]["findings"], 2);
+}
+
+/// Every format the tool reads, end to end, each named only by its file
+/// extension. A reader that stopped naming things would cost no finding
+/// — which is the design, and is exactly why it needs asserting here.
+#[test]
+fn every_format_resolves_a_key_path_from_the_file_name_alone() {
+    let tree = Tree::new("formats");
+    for (name, body) in [
+        ("a.json", format!("{{\"outer\":{{\"inner\":\"{RLO}\"}}}}\n")),
+        ("a.yaml", format!("outer:\n  inner: \"{RLO}\"\n")),
+        ("a.toml", format!("[outer]\ninner = \"{RLO}\"\n")),
+        ("a.ini", format!("[outer]\ninner = {RLO}\n")),
+        (".env", format!("INNER={RLO}\n")),
+        ("a.csv", format!("inner\n{RLO}\n")),
+    ] {
+        tree.write(name, &body);
+    }
+
+    let run = run(&["--hidden", &tree.path().to_string_lossy()]);
+    assert_eq!(run.code, 1, "{}", run.stderr);
+    let report = report(&run);
+    assert_eq!(report["summary"]["files"], 6, "{}", run.stdout);
+
+    for (name, key) in [
+        ("a.json", "outer.inner"),
+        ("a.yaml", "outer.inner"),
+        ("a.toml", "outer.inner"),
+        ("a.ini", "outer.inner"),
+        (".env", "INNER"),
+        ("a.csv", "inner"),
+    ] {
+        let file = report["files"]
+            .as_array()
+            .expect("a file list")
+            .iter()
+            .find(|file| {
+                file["file"]
+                    .as_str()
+                    .is_some_and(|found| found.replace('\\', "/").ends_with(name))
+            })
+            .unwrap_or_else(|| panic!("{name} is not in the report: {}", run.stdout));
+        assert_eq!(file["findings"][0]["key"], key, "{name}: {}", run.stdout);
+    }
+}
+
 /// A refusal never fails the run on its own. `--strict` is how a caller
 /// insists that the scan covered what it was pointed at.
 #[test]

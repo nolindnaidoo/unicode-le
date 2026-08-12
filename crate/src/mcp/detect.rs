@@ -12,6 +12,7 @@
 
 use serde_json::{Value, json};
 
+use crate::detect::format::SUPPORTED_FORMATS;
 use crate::detect::{self, KINDS, Options};
 
 const DEFAULT_MAX_RESULTS: usize = 500;
@@ -19,6 +20,7 @@ const MAX_MAX_RESULTS: usize = 5000;
 
 pub(crate) fn definition() -> Value {
     let kinds: Vec<&str> = KINDS.iter().map(|(_, _, short)| *short).collect();
+    let formats: Vec<&str> = SUPPORTED_FORMATS.to_vec();
     json!({
         "name": "detect_unicode_risks",
         "description": "Find the Unicode characters in a document that hide meaning: \
@@ -49,6 +51,19 @@ pub(crate) fn definition() -> Value {
                                     Naming them is what allows the homoglyph check to run on a \
                                     translated document.",
                 },
+                "format": {
+                    "type": "string",
+                    "enum": formats,
+                    "description": "The document's format, so each finding can carry the key \
+                                    path that names where it sits. Omit it and findings carry a \
+                                    line and column only; an unrecognised name costs the key \
+                                    paths and never a finding.",
+                },
+                "filename": {
+                    "type": "string",
+                    "description": "The document's name, as an alternative to `format`. Only \
+                                    its extension is read, and nothing is opened.",
+                },
                 "maxResults": {
                     "type": "integer",
                     "minimum": 1,
@@ -74,7 +89,14 @@ pub(crate) fn run(arguments: &Value) -> Result<Value, String> {
     let max_results = read_max_results(arguments)?;
     let options = read_options(arguments)?;
 
-    let examination = detect::examine(content, &options);
+    // A document arrives here with no name, so `format` is the only way
+    // a caller can ask for key paths. Unrecognised resolves to plain
+    // text, which finds the same risks and reports them without a key.
+    let format = detect::format::resolve_format(
+        options.format.as_deref(),
+        arguments.get("filename").and_then(Value::as_str),
+    );
+    let examination = detect::examine(content, format, &options);
     let mut findings: Vec<Value> = examination
         .findings
         .iter()
@@ -126,7 +148,25 @@ pub(crate) fn read_options(arguments: &Value) -> Result<Options, String> {
             .expected_scripts
             .push(detect::scripts::parse_script(&token)?);
     }
+    options.format = read_format(arguments)?;
     Ok(options)
+}
+
+/// The declared format, if the caller named one.
+///
+/// Refused loudly when it is not a string, and **accepted quietly when
+/// it is a name nothing recognises**: the format only decides whether a
+/// finding can carry a key path, so an unknown one costs key paths and
+/// no findings. Refusing it would turn a cosmetic mistake into a scan
+/// that did not happen.
+fn read_format(arguments: &Value) -> Result<Option<String>, String> {
+    let Some(value) = arguments.get("format") else {
+        return Ok(None);
+    };
+    value
+        .as_str()
+        .map(|name| Some(name.to_string()))
+        .ok_or_else(|| "format must be a string".to_string())
 }
 
 fn strings(arguments: &Value, name: &str) -> Result<Vec<String>, String> {
