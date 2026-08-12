@@ -415,6 +415,54 @@ mod tests {
         }
     }
 
+    /// **The one place a format may change a finding, pinned so a second
+    /// cannot arrive quietly.** `escape_spans` is the only reader output
+    /// that reaches a scanner rather than a key path, and only JSON
+    /// declares any: inside a JSON string the grammar says `\n` is a line
+    /// feed, so the `n` is not a letter and the word ends before it.
+    /// Everywhere else the bytes really are a Latin letter against
+    /// Cyrillic and it stays a finding.
+    ///
+    /// The guard above cannot see this — its document holds no escape —
+    /// so a reader that grew its own escape rule would pass it while
+    /// losing findings. This is what fails instead.
+    #[test]
+    fn only_the_json_reader_may_resolve_an_escape() {
+        // Padded with English so the document keeps a Latin baseline: six
+        // Cyrillic letters on their own are a third of this document's
+        // letters, and the script-context refusal would withhold the very
+        // checks being measured.
+        let content = concat!(
+            "{\"note\":\"the quick brown fox jumps over the lazy dog and ",
+            "then a few more ordinary words to keep this file latin\",",
+            "\"greeting\":\"Hello\\n\u{41f}\u{440}\u{438}\u{432}\u{435}\u{442}\"}"
+        );
+        let kinds_for = |format: &str| -> Vec<(Kind, usize)> {
+            examine(content, format, &Options::default())
+                .findings
+                .into_iter()
+                .map(|finding| (finding.kind, finding.offset))
+                .collect()
+        };
+
+        let baseline = kinds_for("text");
+        assert!(
+            !baseline.is_empty(),
+            "the escape document must find something as plain text"
+        );
+        for format in ["yaml", "toml", "ini", "env", "csv", "nonsense"] {
+            assert_eq!(
+                kinds_for(format),
+                baseline,
+                "{format} resolved an escape sequence it has no grammar for"
+            );
+        }
+        assert!(
+            kinds_for("json").is_empty(),
+            "the JSON reader stopped resolving the escape it is the only one allowed to"
+        );
+    }
+
     /// And the half that makes it worth having: read as its own format,
     /// a finding is named by the document's own vocabulary rather than
     /// by a line number in a catalogue of five thousand of them.
