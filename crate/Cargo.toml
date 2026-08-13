@@ -1,11 +1,11 @@
 [package]
 name = "unicode-le"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
 readme = "README.md"
-description = "Find the Unicode characters in a codebase that hide meaning — Trojan Source bidi controls, invisibles, homoglyphs, mixed scripts"
+description = "Find the Unicode that hides meaning — bidi controls, invisibles, homoglyphs, mixed scripts"
 authors = ["Nolin D Naidoo"]
 homepage = "https://letools.dev/tools/unicode-le"
 repository = "https://github.com/nolindnaidoo/unicode-le"
