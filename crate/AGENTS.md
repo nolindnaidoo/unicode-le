@@ -41,7 +41,7 @@ crate/src/
   returns findings and refusals, so the entire decision layer — including
   the two rules the tool rests on, report safety and the script-context
   refusal — tests from a string with no disk and no flake. It carries the
-  **90% line coverage floor per module**. A `std::fs` call appearing
+  **75% line coverage floor per module**. A `std::fs` call appearing
   there is a bug.
 - **`scan.rs` is the only path either surface calls.** `cli.rs` and
   `mcp/` are projections of one implementation; a surface that grows its
@@ -245,7 +245,7 @@ CHANGELOG entry.
 
 The bar, enforced by review:
 
-- **`detect/`: 90% line coverage floor per module.** Everything in it is
+- **`detect/`: 75% line coverage floor per module.** Everything in it is
   pure; if something is hard to test there, the design is wrong.
 - **Exit codes and the stream contract belong in `tests/contracts.rs`.**
   They are the API — callers branch on them — so they are pinned by

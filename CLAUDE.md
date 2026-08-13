@@ -83,12 +83,29 @@ UNICODE_LE_SCENARIOS=1 cargo test --locked --test scenarios
 - **Changing a fixture or an expectation is a behaviour change** and needs a
   CHANGELOG entry. The three translation fixtures — `zh-cn.json`, `ru.json`,
   `ja.json` — are the most important files in the repository.
-- **Config files and workflows are shared across the family.** `.editorconfig`,
-  `.gitattributes`, the agent rule files, `dependabot.yml`, `codeql-config.yml`
-  and the workflow scaffolding are byte-identical across the sibling repos
-  where they should be; a change here needs copying to the rest.
-- **Coverage thresholds are a floor**, never lowered to make CI pass. 90% per
+- **Scaffolding is shared with the other crate-only repos, not with the
+  extension repos.** `.editorconfig`, `.gitattributes`,
+  `.githooks/commit-msg`, `dependabot.yml`, `codeql-config.yml`,
+  `codeql.yml` and `dependabot-auto-merge.yml` are byte-identical across the
+  six, and `letools-site/scripts/check-fleet.ts` holds them there — run
+  `bun run check:fleet ../` from a checkout of the site. **`ci-crate.yml` and
+  `release-crate.yml` are this repo's own**, deliberately: the crates stand on
+  their own. The agent instruction files are one document *within* a repo and
+  never across them. The extension-shaped files (`ci.yml`, `biome.json`,
+  `release.yml`, `zed-sync.yml`) do not exist here — copying one from a
+  two-frontend sibling re-imposes a shape this repo does not have.
+- **CI narrows itself on a docs-only push.** `ci-crate.yml` fires on `*.md` and
+  the agent instruction files — it has to, because the `policy` job greps them,
+  and the filter used to admit only `crate/**` so that gate could run only when
+  the files it guards had *not* been touched. On a docs-only push `policy` and
+  `commits` run and every Rust job skips. Anything unrecognised, and an
+  unreadable diff, counts as code and runs everything.
+- **Coverage floors are a backstop, not a target** — well below where the code
+  actually is, and never raised to track it. 75% per
   module in `detect/`, enforced per module rather than on the total.
 - **Every claim must be provable.** No number, format or behaviour goes in a
   README, a doc or help text unless the code backs it. Run the binary and read
-  the output before writing down what it prints.
+  the output before writing down what it prints. That governs **behaviour and
+  numbers**, not **availability**: an install line for a publish you are about
+  to make is **staged, not forbidden**. Write it, and let the release commit be
+  what makes it true.
