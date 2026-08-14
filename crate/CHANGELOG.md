@@ -5,7 +5,7 @@ The Rust CLI and MCP server.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2026-08-14
 
 ### Changed
 
@@ -164,3 +164,4 @@ that a declared script is an *expected* script came from that run, and
 `latin_mixed_with_a_declared_script_is_a_translation` pins it.
 
 [0.1.0]: https://crates.io/crates/unicode-le/0.1.0
+[0.1.1]: https://crates.io/crates/unicode-le/0.1.1

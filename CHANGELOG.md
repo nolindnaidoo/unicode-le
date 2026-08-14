@@ -7,11 +7,11 @@ consumer reads, this one is what a reader of the repository needs.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2026-08-14
 
-`crate/Cargo.toml` carries 0.1.1; what changed in the crate is in
+What changed in the crate is in
 [`crate/CHANGELOG.md`](crate/CHANGELOG.md). This section is the
-repository around it, which had been moving without a record.
+repository around it.
 
 ### Added
 
@@ -175,3 +175,4 @@ the two frontends the way it is in the sibling repos.
   reader could see. `scan::report_path` is the one place that decides it.
 
 [0.1.0]: https://crates.io/crates/unicode-le/0.1.0
+[0.1.1]: https://crates.io/crates/unicode-le/0.1.1
