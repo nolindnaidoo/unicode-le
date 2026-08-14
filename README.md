@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nolindnaidoo/unicode-le/main/assets/icon.png" alt="Unicode-LE logo" width="96" height="96"/>
+</p>
 <h1 align="center">Unicode-LE: The Characters That Are Not What They Look Like</h1>
 <p align="center">
   <b>Scan a tree for the Unicode that hides meaning — and never see it quoted back at you</b><br/>
