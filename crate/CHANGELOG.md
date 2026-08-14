@@ -5,6 +5,16 @@ The Rust CLI and MCP server.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **One sentence describes this crate everywhere it is described.** The
+  `description` in `Cargo.toml`, the line under the title in
+  `README.md`, and the entry on letools.dev had drifted into three
+  paraphrases, so the crate a reader met on crates.io was not obviously
+  the one they met on the site. Nothing about the tool moved.
+
 ## [0.1.0] - 2026-08-12
 
 First release. The core: seven finding kinds, three refusals, both
@@ -153,4 +163,4 @@ is written without spaces, so `CSVストリーミング` is one word. The rule
 that a declared script is an *expected* script came from that run, and
 `latin_mixed_with_a_declared_script_is_a_translation` pins it.
 
-[0.1.0]: https://github.com/nolindnaidoo/unicode-le/releases/tag/crate-v0.1.0
+[0.1.0]: https://crates.io/crates/unicode-le/0.1.0
