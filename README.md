@@ -77,6 +77,7 @@ an unchanged tree produce the same bytes.)
 stdout is one JSON document; stderr is what you see above.
 
 ```bash
+
 # in CI, for the CVE and nothing else:
 unicode-le --fail-on bidi .
 ```
@@ -95,10 +96,6 @@ cd unicode-le/crate
 cargo build --release
 ./target/release/unicode-le --help
 ```
-
-There is no VS Code extension beside it yet either. When one lands,
-`crate/fixtures/` becomes the contract between the two frontends the way
-it is in the sibling repos.
 
 ## It runs on internationalised code without drowning you
 
@@ -123,13 +120,18 @@ translation rather than a finding — while a Cyrillic letter in a Latin
 word *in that same file* is still caught. Declaring is how you turn the
 check on, never how you turn it off.
 
-Run against two real locale trees — 37 files across 25 languages,
-Cyrillic, Greek, Han, Hiragana, Katakana and Hangul:
+Reproduce it against the three translation fixtures the crate ships —
+Chinese, Russian and Japanese:
 
-| | findings |
-|---|---|
-| no script declared | **0** |
-| `--script Han,Hiragana,Katakana,Hangul,Cyrillic,Greek` | **0** |
+```bash
+unicode-le fixtures/documents/{zh-cn,ru,ja}.json
+unicode-le --script Han,Hiragana,Katakana,Cyrillic fixtures/documents/{zh-cn,ru,ja}.json
+```
+
+| | findings | refusals |
+|---|---|---|
+| no script declared | **0** | 3 — `intentional_script_context`, naming the share it measured |
+| `--script Han,Hiragana,Katakana,Cyrillic` | **0** | **0** — every check ran |
 
 Both numbers matter. The second says the checks *ran* and found nothing.
 
@@ -276,35 +278,15 @@ ran — never that the answer was yes. Refusals speak the caller's
 vocabulary: an MCP caller has no command line, so no message on that
 surface names a flag, and a test asserts none contains `--`.
 
-## What it stands on
+## Documentation
 
-[`unicode-security`](https://crates.io/crates/unicode-security) (UAX #39
-— confusable skeletons, script sets, mixed-script detection),
-[`unicode-script`](https://crates.io/crates/unicode-script) (UAX #24) and
-[`unicode-normalization`](https://crates.io/crates/unicode-normalization)
-(UAX #15), all from unicode-rs, plus `ignore` for the walk. UAX #39 is a
-data standard and its tables move with every Unicode release; copying
-them into this crate would be a maintenance debt, not a feature. What
-this crate adds is the layer none of them have: walking a tree, refusing
-an encoding, locating a risk at a line and column, and knowing when not
-to answer. See [`crate/SPEC.md`](crate/SPEC.md).
-
-## Development
-
-```bash
-cd crate
-cargo fmt --all --check
-cargo clippy --all-targets -- -D warnings
-cargo test --locked
-```
-
-Beyond the default suite, five hardening tiers run in CI — `hazards`,
-`platform`, `fuzz`, `budget` and `coverage-matrix`. Each exists because
-something real got through a green suite; see
-[AGENTS.md](AGENTS.md#testing). Architecture and conventions live in
-[AGENTS.md](AGENTS.md) and [`crate/AGENTS.md`](crate/AGENTS.md); the
-behavioural contract is [`crate/SPEC.md`](crate/SPEC.md). Changes are
-tracked in [CHANGELOG.md](CHANGELOG.md).
+| What | Where |
+|---|---|
+| What the tool is allowed to say — scope, output contract, refusals, non-goals | [`crate/SPEC.md`](crate/SPEC.md) |
+| How the code is written and held together — architecture, invariants, the gates | [`crate/AGENTS.md`](crate/AGENTS.md) |
+| The crate's own front page | [`crate/README.md`](crate/README.md) |
+| What changed | [CHANGELOG.md](CHANGELOG.md) · [`crate/CHANGELOG.md`](crate/CHANGELOG.md) |
+| The tool's page, and the other fifteen | [letools.dev/tools/unicode-le](https://letools.dev/tools/unicode-le) |
 
 ## More from the LE family
 
@@ -340,6 +322,7 @@ Each stands on its own: no shared crate, no published core. Where two of them
 agree, it is because the same answer was right twice.
 
 **Contact** — [nolindnaidoo.com](https://nolindnaidoo.com) · [GitHub](https://github.com/nolindnaidoo) · [LinkedIn](https://www.linkedin.com/in/nolindnaidoo/)
+
 ## Also by nolindnaidoo
 
 **Rust** — pixelcoords and pixelactions are one loop: pixelcoords answers

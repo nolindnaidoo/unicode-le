@@ -57,6 +57,7 @@ src/render.ts:1:16  [high] bidi-control U+202E  right-to-left override: a
 ```
 
 ```bash
+
 # in CI, for the CVE and nothing else:
 unicode-le --fail-on bidi .
 ```
@@ -66,13 +67,12 @@ stdout is one JSON document; stderr is what you see above.
 
 ## Install
 
-```bash
-# from source, today
-cargo build --release && ./target/release/unicode-le --help
+| Route | Command | Worth knowing |
+|---|---|---|
+| **cargo** | `cargo install unicode-le` | Any platform, needs **Rust 1.88+**. |
+| **From source** | `git clone https://github.com/nolindnaidoo/unicode-le`<br>`cd unicode-le/crate && cargo build --release` | The same build CI runs. |
 
-# from crates.io
-cargo install unicode-le
-```
+No runtime, no network, nothing written.
 
 ## It runs on internationalised code without drowning you
 
@@ -96,13 +96,18 @@ expected here, so a Latin product name inside a Chinese string is a
 translation rather than a finding — while a Cyrillic letter in a Latin
 word in that same file is still caught.
 
-Run against two real locale trees — 37 files across 25 languages,
-Cyrillic, Greek, Han, Hiragana, Katakana and Hangul:
+Reproduce it against the three translation fixtures the crate ships —
+Chinese, Russian and Japanese:
 
-| | findings |
-|---|---|
-| no script declared | **0** |
-| `--script Han,Hiragana,Katakana,Hangul,Cyrillic,Greek` | **0** |
+```bash
+unicode-le fixtures/documents/{zh-cn,ru,ja}.json
+unicode-le --script Han,Hiragana,Katakana,Cyrillic fixtures/documents/{zh-cn,ru,ja}.json
+```
+
+| | findings | refusals |
+|---|---|---|
+| no script declared | **0** | 3 — `intentional_script_context`, naming the share it measured |
+| `--script Han,Hiragana,Katakana,Cyrillic` | **0** | **0** — every check ran |
 
 Both numbers matter. The second says the checks *ran* and found nothing.
 
@@ -217,7 +222,7 @@ move with every Unicode release; copying them into this crate would be a
 maintenance debt, not a feature. What this crate adds is the layer none
 of them have: walking a tree, refusing an encoding, locating a risk at a
 line and column, and knowing when not to answer. See
-[SPEC.md](SPEC.md).
+[SPEC.md](https://github.com/nolindnaidoo/unicode-le/blob/main/crate/SPEC.md).
 
 ## More from the LE family
 
@@ -253,6 +258,7 @@ Each stands on its own: no shared crate, no published core. Where two of them
 agree, it is because the same answer was right twice.
 
 **Contact** — [nolindnaidoo.com](https://nolindnaidoo.com) · [GitHub](https://github.com/nolindnaidoo) · [LinkedIn](https://www.linkedin.com/in/nolindnaidoo/)
+
 ## Also by nolindnaidoo
 
 **Rust** — pixelcoords and pixelactions are one loop: pixelcoords answers
