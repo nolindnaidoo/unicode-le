@@ -60,8 +60,11 @@ unicode-le --fail-on bidi .
 
 ## Install
 
-**Not published yet.** `cargo install unicode-le` is what it will be; today
-it builds from source:
+```bash
+cargo install unicode-le
+```
+
+Or build it from source:
 
 ```bash
 git clone https://github.com/nolindnaidoo/unicode-le

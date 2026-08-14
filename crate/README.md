@@ -44,7 +44,7 @@ stdout is one JSON document; stderr is what you see above.
 # from source, today
 cargo build --release && ./target/release/unicode-le --help
 
-# once published
+# from crates.io
 cargo install unicode-le
 ```
 

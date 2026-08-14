@@ -27,8 +27,8 @@ It sits on both sides of the LE thesis: a **security screen** and a
 **data-prep cleanliness pass**. It reads files and writes none. It makes
 no network request, ever, on any surface.
 
-**Status: v0.1.0, unpublished.** Not on crates.io yet, and there is no
-VS Code extension beside it. When one lands, `crate/fixtures/` becomes
+**Status: published on crates.io.** There is no VS Code extension beside
+it. When one lands, `crate/fixtures/` becomes
 the contract between the two frontends the way it is in the sibling
 repos, and the `parity` and `differential` CI jobs those repos run
 arrive with it — they are deliberately absent rather than present and
