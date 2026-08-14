@@ -1,6 +1,32 @@
-# unicode-le
+<h1 align="center">unicode-le</h1>
 
-**Find the characters in your codebase that are not what they look like.**
+<p align="center">
+  <b>Scan a tree for the Unicode that hides meaning — and never see it quoted back at you</b><br/>
+  <i>Trojan Source bidi controls, invisibles, homoglyphs, mixed scripts, non-NFC text, spaces that are not the space</i>
+</p>
+
+<p align="center">
+  <a href="https://crates.io/crates/unicode-le">
+    <img src="https://img.shields.io/crates/v/unicode-le.svg" alt="unicode-le on crates.io" />
+  </a>
+  <a href="https://crates.io/crates/unicode-le">
+    <img src="https://img.shields.io/crates/d/unicode-le.svg" alt="crates.io downloads" />
+  </a>
+  <a href="https://github.com/nolindnaidoo/unicode-le/actions/workflows/ci-crate.yml">
+    <img src="https://github.com/nolindnaidoo/unicode-le/actions/workflows/ci-crate.yml/badge.svg" alt="Build Status" />
+  </a>
+  <img src="https://img.shields.io/badge/rustc-1.88+-93450a.svg" alt="MSRV: Rust 1.88+" />
+  <a href="https://github.com/nolindnaidoo/unicode-le/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" />
+  </a>
+  <a href="https://letools.dev/tools/unicode-le">
+    <img src="https://img.shields.io/badge/web-letools.dev-00A0FF.svg" alt="letools.dev" />
+  </a>
+</p>
+
+> **Useful?** A star is how other developers find it —
+> [★ GitHub](https://github.com/nolindnaidoo/unicode-le) ·
+> [letools.dev/tools/unicode-le](https://letools.dev/tools/unicode-le)
 
 A right-to-left override that makes a reviewer read an `if` guard that
 is not there. A Cyrillic `а` in `pаypal`. A zero-width space between two

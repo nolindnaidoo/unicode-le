@@ -8,10 +8,13 @@
 </p>
 
 <p align="center">
+  <a href="https://crates.io/crates/unicode-le">
+    <img src="https://img.shields.io/crates/v/unicode-le?style=for-the-badge&label=Rust%20CLI&color=blue&logo=rust" alt="unicode-le on crates.io" />
+  </a>
   <a href="https://letools.dev/tools/unicode-le">
     <img src="https://img.shields.io/badge/LE%20Tools-letools.dev-blue?style=for-the-badge" alt="LE Tools" />
   </a>
-  <a href="LICENSE">
+  <a href="https://github.com/nolindnaidoo/unicode-le/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="MIT licensed" />
   </a>
 </p>
@@ -21,6 +24,10 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/nolindnaidoo/unicode-le/main/assets/demo.gif" alt="Unicode-LE demo — the real binary, recorded by assets/demo.tape" style="max-width: 100%; height: auto;" />
 </p>
+
+> **Useful?** A star is how other developers find it —
+> [★ GitHub](https://github.com/nolindnaidoo/unicode-le) ·
+> [letools.dev/tools/unicode-le](https://letools.dev/tools/unicode-le)
 
 A right-to-left override that makes a reviewer read an `if` guard that is
 not there. A Cyrillic `а` in `pаypal`. A zero-width space between two
