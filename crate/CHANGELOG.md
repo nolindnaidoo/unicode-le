@@ -5,6 +5,23 @@ The Rust CLI and MCP server.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-08-15
+
+### Fixed
+
+- **`--kind` can no longer decide what `--fail-on` counts.**
+  `--fail-on bidi` counts from the report and `--kind` decides what
+  reaches the report, so `--kind invisible --fail-on bidi` exited **0**
+  on `fixtures/documents/trojan-source.c` — six bidi controls — with
+  `summary.bidi: 0`. Each flag was behaving exactly as documented on its
+  own; the composition was the lie, which is why no test caught it.
+
+  The pair is refused now, exit 2, naming it. Not reconciled: gating on
+  what the filter removed would exit 1 over a report showing nothing,
+  and widening the filter to suit the gate would answer a question
+  nobody asked. `--kind bidi --fail-on bidi` and a bare `--fail-on bidi`
+  are unaffected.
+
 ## [0.2.0] - 2026-08-15
 
 ### Fixed
@@ -204,3 +221,4 @@ that a declared script is an *expected* script came from that run, and
 [0.1.1]: https://crates.io/crates/unicode-le/0.1.1
 [0.1.2]: https://crates.io/crates/unicode-le/0.1.2
 [0.2.0]: https://crates.io/crates/unicode-le/0.2.0
+[0.2.1]: https://crates.io/crates/unicode-le/0.2.1

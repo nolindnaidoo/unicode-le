@@ -8,7 +8,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use crate::detect::{self, Options};
+use crate::detect::{self, Kind, Options};
 use crate::escape;
 use crate::scan::{self, FailOn, FileReport, Report};
 use crate::walk::{self, WalkOptions};
@@ -40,7 +40,9 @@ Options:
                     by Unicode name or ISO 15924 tag (repeatable,
                     comma-separated), e.g. Han or Cyrillic
   --fail-on <what>  what exits 1: any finding, or bidi for the Trojan
-                    Source class alone (default any)
+                    Source class alone (default any). Refused alongside
+                    a --kind that excludes what it gates on, because the
+                    filter would decide the gate
   --strict          exit 2 if any file was refused, rather than reporting
                     it and carrying on
   --stdin           read one document from stdin
@@ -204,6 +206,26 @@ fn parse(args: &[String]) -> Result<Arguments, String> {
     if !arguments.stdin && arguments.inputs.is_empty() {
         return Err("name a file or a directory to scan. Try --help.".to_string());
     }
+    // **A filter may not decide a gate.** `--fail-on bidi` counts from
+    // the report, and `--kind` decides what reaches the report, so
+    // `--kind invisible --fail-on bidi` exited 0 on the Trojan Source
+    // fixture with `summary.bidi: 0` — a file holding six bidi controls
+    // passing a check named after them. Each flag was doing its own
+    // documented job; the composition was the lie.
+    //
+    // Refused rather than reconciled. Silently gating on what the filter
+    // removed would exit 1 over a report showing nothing, and silently
+    // widening the filter would answer a question nobody asked.
+    if matches!(arguments.fail_on, FailOn::Bidi)
+        && !arguments.detect.kinds.is_empty()
+        && !arguments.detect.kinds.contains(&Kind::BidiControl)
+    {
+        return Err(
+            "--fail-on bidi cannot be answered while --kind excludes bidi: the filter \
+             decides what the gate counts. Add bidi to --kind, or drop --fail-on."
+                .to_string(),
+        );
+    }
     Ok(arguments)
 }
 
@@ -342,6 +364,35 @@ mod tests {
         for value in FAIL_ON {
             assert!(fail_on(value).is_ok(), "{value}");
             assert!(USAGE.contains(value), "{value} is undocumented");
+        }
+    }
+
+    /// **A filter may not decide a gate.** `--fail-on bidi` counts from
+    /// the report and `--kind` decides what reaches it, so the pair
+    /// exited 0 on a file holding six bidi controls, with
+    /// `summary.bidi: 0`. Each flag was doing its documented job.
+    #[test]
+    fn a_kind_filter_that_excludes_the_gate_is_refused() {
+        let error = parse(&[
+            "--kind".into(),
+            "invisible".into(),
+            "--fail-on".into(),
+            "bidi".into(),
+            "a.ts".into(),
+        ])
+        .expect_err("a refusal");
+        assert!(error.contains("--fail-on bidi"), "{error}");
+
+        // The consistent pairings still parse: naming bidi among the
+        // kinds, and naming no kinds at all.
+        for kinds in [vec!["bidi"], vec!["bidi", "invisible"], vec![]] {
+            let mut args: Vec<String> = Vec::new();
+            for kind in &kinds {
+                args.push("--kind".into());
+                args.push((*kind).to_string());
+            }
+            args.extend(["--fail-on".into(), "bidi".into(), "a.ts".into()]);
+            assert!(parse(&args).is_ok(), "{kinds:?}");
         }
     }
 

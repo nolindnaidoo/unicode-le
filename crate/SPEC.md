@@ -438,6 +438,15 @@ be grepped for by the person who typed it.
 class, for a pipeline that wants the security screen without the
 cleanliness pass.
 
+**A filter may not decide a gate.** `--fail-on bidi` counts from the
+report and `--kind` decides what reaches the report, so
+`--kind invisible --fail-on bidi` exited 0 on a file holding six bidi
+controls, reporting `summary.bidi: 0`. Each flag was doing its own
+documented job and the composition was the lie. The pair is refused —
+exit 2, naming it — rather than reconciled: gating on what the filter
+removed would exit 1 over a report showing nothing, and widening the
+filter to suit the gate would answer a question nobody asked.
+
 `--strict` turns any refusal into exit 2. It is off by default because a
 check that exits 2 on every repository holding a PNG is a check nobody
 puts in CI; it exists because otherwise there is no way to insist that a
