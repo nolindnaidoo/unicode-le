@@ -290,10 +290,10 @@ The bar, enforced by review:
 ## Verification — the definition of done
 - **Commits are conventional and CI enforces it.** The `commits` job in
   `.github/workflows/ci-crate.yml` validates every pushed commit's subject
-  against the same pattern and the same 100-character cap as
-  `.githooks/commit-msg`. The hook is opt-in per clone (`git config
-  core.hooksPath .githooks`), so `--no-verify` and a fresh checkout defer
-  the check to CI rather than escaping it. Scopes may be comma-separated.
+  against the same pattern as `.githooks/commit-msg`. The hook is opt-in
+  per clone (`git config core.hooksPath .githooks`), so `--no-verify` and
+  a fresh checkout defer the check to CI rather than escaping it. Scopes
+  may be comma-separated.
 
 All of it, before every push:
 
@@ -321,11 +321,11 @@ this file), and honest — claims in docs must match the code.
 The repository root's conventions apply unchanged, and the root
 [AGENTS.md](../AGENTS.md) is where they are written down: the GitHub
 noreply address on every commit, a conventional prefix, an imperative
-subject under 100 characters with no trailing period, and a body carrying
-the *why*. The `commit-msg` hook in `.githooks/` rejects a bad subject
-before the commit exists; point git at it once per clone with
-`git config core.hooksPath .githooks`. No CI job runs the same check yet,
-so `--no-verify` avoids it rather than delaying it.
+subject with no trailing period, and a body carrying the *why*. The
+`commit-msg` hook in `.githooks/` rejects a bad subject before the commit
+exists; point git at it once per clone with `git config core.hooksPath
+.githooks`. No CI job runs the same check yet, so `--no-verify` avoids it
+rather than delaying it.
 
 One concern per change. If a doc describes the thing you changed —
 README, CHANGELOG, SPEC.md or this file — it moves in the same commit.
