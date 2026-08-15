@@ -5,6 +5,31 @@ The Rust CLI and MCP server.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-15
+
+### Fixed
+
+- **A `.tsv` column is keyed by its own header.** `.tsv` shared the
+  comma reader, so a tab row was one field and the entire header row
+  became the key of every hazard in it — `id\tname\tcity`, which names
+  no column. The finding, its kind and its position were all correct;
+  only the key, which is how a reader finds the character, was not.
+
+### Added
+
+- `tsv` is a format in its own right — it resolves, names itself, is
+  offered in the MCP schema, and `fixtures/documents/rows.tsv` pins it
+  beside the `.csv` holding the same hazard.
+
+- A contract test over the built binary, observed failing before the fix.
+
+### Unchanged, deliberately
+
+- `.conf` and `.cfg` keep the INI reader. Two siblings dropped them
+  today because their INI readers found keys in free-form prose; this
+  one does not — measured, a sentence gives the same finding and the
+  same absent key read as `ini` or as text.
+
 ## [0.1.2] - 2026-08-15
 
 ### Fixed
@@ -178,3 +203,4 @@ that a declared script is an *expected* script came from that run, and
 [0.1.0]: https://crates.io/crates/unicode-le/0.1.0
 [0.1.1]: https://crates.io/crates/unicode-le/0.1.1
 [0.1.2]: https://crates.io/crates/unicode-le/0.1.2
+[0.2.0]: https://crates.io/crates/unicode-le/0.2.0

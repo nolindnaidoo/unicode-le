@@ -196,7 +196,8 @@ presence would take one for the other.
 | `toml` | `.toml` | `server.limits.note` |
 | `ini` | `.ini`, `.cfg`, `.conf`, `.properties` | `database.host` |
 | `env` | `.env` | `API_HOST` |
-| `csv` | `.csv`, `.tsv` | the column's header name, or `[3]` |
+| `csv` | `.csv` | the column's header name, or `[3]` |
+| `tsv` | `.tsv` | the same, split on tabs |
 | `text` | everything else | absent |
 
 **The format decides how a finding is addressed and never whether it

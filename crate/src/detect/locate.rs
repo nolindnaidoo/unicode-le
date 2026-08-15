@@ -48,7 +48,8 @@ pub(crate) fn key_spans(text: &str, format: &str) -> Vec<KeySpan> {
         "toml" => toml::key_spans(text),
         "ini" => ini::key_spans(text),
         "env" => dotenv::key_spans(text),
-        "csv" => csv::key_spans(text),
+        "csv" => csv::key_spans(text, csv::COMMA),
+        "tsv" => csv::key_spans(text, csv::TAB),
         _ => Vec::new(),
     }
 }

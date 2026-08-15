@@ -27,7 +27,7 @@ const ALIASES: [(&str, &str); 15] = [
     ("yaml", "yaml"),
     ("yml", "yaml"),
     ("csv", "csv"),
-    ("tsv", "csv"),
+    ("tsv", "tsv"),
     ("toml", "toml"),
     ("ini", "ini"),
     ("cfg", "ini"),
@@ -42,8 +42,8 @@ const ALIASES: [(&str, &str); 15] = [
 /// The formats a caller can name, for the tool schema's enum. Held equal
 /// to the alias table by a test, so a format can never be offered and
 /// then not resolve.
-pub(crate) const SUPPORTED_FORMATS: [&str; 7] =
-    ["json", "yaml", "csv", "toml", "ini", "env", "text"];
+pub(crate) const SUPPORTED_FORMATS: [&str; 8] =
+    ["json", "yaml", "csv", "tsv", "toml", "ini", "env", "text"];
 
 /// What the engine uses when it recognises nothing.
 ///
@@ -117,7 +117,7 @@ mod tests {
         for (alias, expected) in [
             ("jsonc", "json"),
             ("yml", "yaml"),
-            ("tsv", "csv"),
+            ("tsv", "tsv"),
             ("cfg", "ini"),
             ("conf", "ini"),
             ("properties", "ini"),

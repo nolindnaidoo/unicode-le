@@ -13,19 +13,26 @@
 
 use super::locate::{KeySpan, lines};
 
-pub(crate) fn key_spans(text: &str) -> Vec<KeySpan> {
+/// The byte between fields. Tab-separated files are the same grammar
+/// with a different one, and reading a tab row on commas made the whole
+/// header one column name — so a hazard in the `name` column was
+/// reported under the key `id\tname\tcity`, which names no column.
+pub(crate) const COMMA: u8 = b',';
+pub(crate) const TAB: u8 = b'\t';
+
+pub(crate) fn key_spans(text: &str, delimiter: u8) -> Vec<KeySpan> {
     let mut rows = lines(text).filter(|(_, line)| !line.trim().is_empty());
     let Some((_, header_line)) = rows.next() else {
         return Vec::new();
     };
-    let headers: Vec<String> = fields(header_line)
+    let headers: Vec<String> = fields(header_line, delimiter)
         .into_iter()
         .map(|field| header_line[field].trim().trim_matches('"').to_string())
         .collect();
 
     let mut spans = Vec::new();
     for (offset, line) in rows {
-        for (column, field) in fields(line).into_iter().enumerate() {
+        for (column, field) in fields(line, delimiter).into_iter().enumerate() {
             spans.push(KeySpan {
                 start: offset + field.start,
                 end: offset + field.end,
@@ -45,7 +52,7 @@ pub(crate) fn key_spans(text: &str) -> Vec<KeySpan> {
 /// A quoted field keeps its quotes in the range. Trimming them would
 /// mean two sets of offsets to keep straight, and the offsets are what
 /// the report is indexed by.
-fn fields(line: &str) -> Vec<std::ops::Range<usize>> {
+fn fields(line: &str, delimiter: u8) -> Vec<std::ops::Range<usize>> {
     let bytes = line.as_bytes();
     let mut out = Vec::new();
     let mut start = 0;
@@ -54,7 +61,7 @@ fn fields(line: &str) -> Vec<std::ops::Range<usize>> {
     for (at, byte) in bytes.iter().enumerate() {
         match byte {
             b'"' => quoted = !quoted,
-            b',' if !quoted => {
+            _ if *byte == delimiter && !quoted => {
                 out.push(start..at);
                 start = at + 1;
             }
@@ -70,12 +77,30 @@ mod tests {
     use super::*;
 
     fn keyed(text: &str, expected: &[(&str, &str)]) {
-        let spans = key_spans(text);
+        let spans = key_spans(text, COMMA);
         let found: Vec<(&str, &str)> = spans
             .iter()
             .map(|span| (text[span.start..span.end].trim(), span.path.as_str()))
             .collect();
         assert_eq!(found, expected, "{text}");
+    }
+
+    /// The delimiter is the whole fix: read on commas, a tab row is one
+    /// field, so the entire header became the key of every hazard in the
+    /// row — a name that names no column.
+    #[test]
+    fn a_tab_row_is_columns_under_tab_and_one_column_under_comma() {
+        let text = "id\tname\tcity\n1\tvalue\tparis\n";
+        let tabbed: Vec<String> = key_spans(text, TAB)
+            .iter()
+            .map(|s| s.path.clone())
+            .collect();
+        assert_eq!(tabbed, ["id", "name", "city"]);
+        let comma: Vec<String> = key_spans(text, COMMA)
+            .iter()
+            .map(|s| s.path.clone())
+            .collect();
+        assert_eq!(comma, ["id\tname\tcity"]);
     }
 
     #[test]
@@ -106,8 +131,8 @@ mod tests {
 
     #[test]
     fn a_header_alone_yields_nothing() {
-        assert!(key_spans("name,city\n").is_empty());
-        assert!(key_spans("").is_empty());
+        assert!(key_spans("name,city\n", COMMA).is_empty());
+        assert!(key_spans("", COMMA).is_empty());
     }
 
     #[test]
@@ -117,7 +142,7 @@ mod tests {
 
     #[test]
     fn the_spans_are_ordered_and_do_not_overlap() {
-        let spans = key_spans("a,b\n1,2\n3,4\n");
+        let spans = key_spans("a,b\n1,2\n3,4\n", COMMA);
         assert_eq!(spans.len(), 4);
         for pair in spans.windows(2) {
             assert!(pair[0].end <= pair[1].start, "{pair:?}");

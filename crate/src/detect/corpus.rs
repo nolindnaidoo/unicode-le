@@ -14,7 +14,7 @@ use super::{Finding, Kind, Options, Reason, Severity, encoding, examine, scripts
 
 const DETECTION: &str = include_str!("../../fixtures/detection.json");
 
-const TEXT_DOCUMENTS: [(&str, &str); 19] = [
+const TEXT_DOCUMENTS: [(&str, &str); 20] = [
     // One per key-path reader. Each holds a real finding in a real
     // structure, because the claim being pinned is that the reader names
     // where it sits and not merely that the reader runs.
@@ -41,6 +41,10 @@ const TEXT_DOCUMENTS: [(&str, &str); 19] = [
     (
         "rows.csv",
         include_str!("../../fixtures/documents/rows.csv"),
+    ),
+    (
+        "rows.tsv",
+        include_str!("../../fixtures/documents/rows.tsv"),
     ),
     (
         "trojan-source.c",

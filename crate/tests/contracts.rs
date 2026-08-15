@@ -503,3 +503,19 @@ fn the_cli_and_the_mcp_server_report_the_same_thing() {
     let from_mcp = &response["result"]["structuredContent"]["data"]["report"];
     assert_eq!(from_mcp, &from_cli, "the two surfaces disagree");
 }
+
+/// `.tsv` shared the comma reader, so a tab row was one field and the
+/// whole header became the key of every hazard in it — a name that
+/// names no column. The key is how a reader finds the character.
+#[test]
+fn a_tab_separated_column_is_named_by_its_own_header() {
+    let tree = Tree::new("tsv-keys");
+    let file = tree.write_bytes("a.tsv", "id\tname\tcity\n1\ta\u{200b}b\tparis\n".as_bytes());
+    let run = run(&[&file.to_string_lossy()]);
+    let document = report(&run);
+    assert_eq!(
+        document["files"][0]["findings"][0]["key"], "name",
+        "{}",
+        run.stdout
+    );
+}
