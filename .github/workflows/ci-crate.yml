@@ -430,7 +430,7 @@ jobs:
           # and the greps below miss a line the run actually printed.
           cargo test --locked --bins coverage_matrix -- --nocapture --test-threads=1 2>&1 \
             | tee "$RUNNER_TEMP/coverage-matrix.txt"
-          grep -q 'coverage-matrix: 7 format readers reachable from fixtures' \
+          grep -q 'coverage-matrix: 8 format readers reachable from fixtures' \
             "$RUNNER_TEMP/coverage-matrix.txt"
           grep -q 'coverage-matrix: 7 kinds reachable from fixtures' \
             "$RUNNER_TEMP/coverage-matrix.txt"
