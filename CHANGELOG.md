@@ -1,11 +1,42 @@
 # Changelog
 
-This repository. The package that ships to crates.io keeps its own entry
-in [`crate/CHANGELOG.md`](crate/CHANGELOG.md) — that one is what a
-consumer reads, this one is what a reader of the repository needs.
+All notable changes to Unicode-LE will be documented here.
 
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+This file covers the **VS Code extension**. The Rust CLI in `crate/` is a
+separate product on its own cadence and keeps its own
+[CHANGELOG](crate/CHANGELOG.md). The entries below 1.0.0 describe this
+repository while it held the CLI alone.
+
+## [1.0.0] - 2026-10-03
+
+### Added
+
+- **The VS Code extension.** `Unicode-LE: Detect Unicode Risks` screens the
+  active document and `Unicode-LE: Scan Workspace for Unicode Risks` screens
+  every file on disk, each opening a Markdown report that names every finding
+  by kind, severity, line, UTF-16 column, codepoint and — in JSON, YAML, TOML,
+  INI, `.properties`, `.env`, CSV and TSV — the key path it sits under.
+- **The report never carries a character it found.** Codepoints are written
+  `U+XXXX`; a path or key path from the document is escaped to `\uXXXX`.
+- **Settings** for the kinds to report and the scripts the workspace is written
+  in, so a translated file is judged rather than refused, plus the workspace
+  scan's patterns, excludes and file cap.
+- **The MCP server in the VSIX and on npm** as `unicode-le-mcp`: the same
+  `detect_unicode_risks` tool the Rust CLI serves, answering identically. Every
+  non-ASCII character in a reply leaves as `\uXXXX`.
+- **The engine is a port of the crate's**, held to it by the shared corpus, a
+  differential that feeds both servers thousands of generated documents with
+  codepoints from every plane, and a check that both servers define the tool
+  identically. Every Unicode property comes from
+  `crate/fixtures/unicode-tables.json`, which the crate renders, so the editor's
+  JavaScript engine never decides a finding.
+- **The workspace scan refuses rather than guesses**: a UTF-16 or UTF-32 file, a
+  binary file and invalid UTF-8 are each refused by name.
+- Localized into twelve languages: the manifest and every runtime string.
+- A Zed extension that runs the MCP server as a context server.
 
 ## [0.1.1] - 2026-08-14
 

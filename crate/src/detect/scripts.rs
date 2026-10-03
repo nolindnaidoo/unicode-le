@@ -360,7 +360,7 @@ fn compatibility_draft(offset: usize, character: char) -> Option<Draft> {
     })
 }
 
-fn ascii_lookalike(character: char) -> Option<char> {
+pub(crate) fn ascii_lookalike(character: char) -> Option<char> {
     if character.is_ascii() || !(character.is_alphabetic() || character.is_numeric()) {
         return None;
     }
@@ -382,7 +382,7 @@ fn ascii_lookalike(character: char) -> Option<char> {
 }
 
 /// The UTS #39 skeleton of a single character, when it is not itself.
-fn resembles(character: char) -> Option<Vec<char>> {
+pub(crate) fn resembles(character: char) -> Option<Vec<char>> {
     let mut buffer = [0u8; 4];
     let prototype: Vec<char> = skeleton(character.encode_utf8(&mut buffer)).collect();
     (prototype != [character]).then_some(prototype)

@@ -1,0 +1,56 @@
+{
+	"name": "unicode-le-mcp",
+	"version": "1.0.0",
+	"mcpName": "io.github.nolindnaidoo/unicode-le",
+	"description": "Find the Unicode that hides meaning: bidi controls, invisibles, homoglyphs and mixed scripts.",
+	"keywords": [
+		"mcp",
+		"modelcontextprotocol",
+		"model-context-protocol",
+		"mcp-server",
+		"ai-agent",
+		"claude",
+		"cursor",
+		"zed",
+		"vscode",
+		"llm-tools",
+		"unicode-le",
+		"unicode-le-mcp",
+		"nolindnaidoo",
+		"letools",
+		"unicode",
+		"trojan-source",
+		"homoglyph",
+		"security"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "Nolin Naidoo",
+		"url": "https://nolindnaidoo.com"
+	},
+	"homepage": "https://letools.dev/tools/unicode-le",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nolindnaidoo/unicode-le.git",
+		"directory": "mcp"
+	},
+	"bugs": {
+		"url": "https://github.com/nolindnaidoo/unicode-le/issues"
+	},
+	"type": "commonjs",
+	"bin": {
+		"unicode-le-mcp": "server.js"
+	},
+	"files": [
+		"server.js",
+		"README.md",
+		"LICENSE"
+	],
+	"engines": {
+		"node": ">=20"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	}
+}

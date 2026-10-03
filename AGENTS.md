@@ -1,331 +1,255 @@
 # AGENTS.md — Unicode-LE
 
-Technical source of truth for this repository. [README.md](README.md) is
-the user-facing doc; this file is for anyone, human or agent, changing
-the code.
+Technical source of truth for this repo. README.md is the user-facing doc; this file is for anyone (human or agent) changing the code.
 
-**This repo hosts one product**: the Rust CLI and MCP server in
-[`crate/`](crate/). Its own [`crate/AGENTS.md`](crate/AGENTS.md) is the
-source of truth for everything *inside* the crate — layout, the settled
-decisions, the corpus contract, the definition of done — and
-[`crate/SPEC.md`](crate/SPEC.md) defines the product behaviour. **On any
-conflict, `crate/AGENTS.md` wins for crate code and this file wins for
-the repository around it.**
-
-Read `crate/AGENTS.md` before writing Rust. This file covers what sits
-above it: the standard the code is held to, the invariants that survive
-across both, the toolchain, CI, and how a change ships.
+This repo hosts **two products**: the extension at the root (this document's scope) and the Rust CLI in `crate/` (its own `AGENTS.md` + `SPEC.md`, which defines what the tool is allowed to say). The shared corpus lives at `crate/fixtures/`. `scripts/check-detection-parity.ts` fails CI when this extension drifts from it, `scripts/check-detection-differential.ts` feeds both MCP servers generated documents and fails on any difference, and `scripts/check-mcp-definition.ts` fails when the two servers define `detect_unicode_risks` differently.
 
 ## What this is
 
-A CLI and MCP server that scans a tree for the Unicode characters that
-hide meaning: Trojan Source bidirectional controls (CVE-2021-42574),
-invisibles, homoglyphs, words that mix scripts, text that is not in NFC,
-spaces that are not the space, and codepoints with no assigned meaning.
-
-It sits on both sides of the LE thesis: a **security screen** and a
-**data-prep cleanliness pass**. It reads files and writes none. It makes
-no network request, ever, on any surface.
-
-**Status: published on crates.io.** There is no VS Code extension beside
-it. When one lands, `crate/fixtures/` becomes
-the contract between the two frontends the way it is in the sibling
-repos, and the `parity` and `differential` CI jobs those repos run
-arrive with it — they are deliberately absent rather than present and
-vacuous.
+A VS Code extension that screens the active document, or every file in the workspace, for the Unicode characters that hide meaning — bidirectional controls, invisibles, homoglyphs, mixed-script words, non-NFC lines, unusual whitespace, unassigned and private-use codepoints — and opens a Markdown report naming each by codepoint. It never rewrites anything. No network access, no filesystem writes.
 
 ## Architecture
 
 ```
-crate/
-├── src/
-│   ├── detect/     pure: the character tables, the script rules, the
-│   │               normalization check, encoding, positions, codepoint
-│   │               rendering, and the per-format key-path readers
-│   │               (json, yaml, toml, ini, dotenv, csv behind locate.rs).
-│   │               No filesystem. 75% line coverage floor per module.
-│   ├── escape.rs   the one place a path or a key becomes inert
-│   ├── walk.rs     ignore-aware tree walking
-│   ├── scan.rs     one file end to end — the only path either surface calls
-│   ├── cli.rs      the terminal surface
-│   └── mcp/        the agent surface
-├── fixtures/       the corpus: one document per finding kind, plus the
-│                   documents that must produce nothing
-├── tests/          contracts, scenarios, and the four hardening tiers
-└── SPEC.md         the behavioural contract
+extension.ts             activate(): telemetry/notifier/statusBar -> registerCommands()
+commands/                detect (active document), scanWorkspace (files from disk,
+                         decoded here), options (settings -> detection options,
+                         refusing an unknown script by name), output (open/copy)
+detection/               THE engine, a port of crate/src/detect/ — pure, no vscode:
+  index.ts               examine(): the crate's detect::examine, step for step
+  tables.ts              reads crate/fixtures/unicode-tables.json; every Unicode
+                         property comes from here, none from the JS engine
+  characters.ts          bidi, invisible, whitespace, unassigned — one char decides
+  normalize.ts           NFC/NFD over the crate's tables, unicode-normalization's
+                         Recompositions transcribed
+  scripts.ts             mixed-script, homoglyphs, the script-context refusal
+  format.ts, locate.ts,  key paths; formats/ holds one line scanner per format
+  formats/
+  position.ts            UTF-16 index -> line, UTF-16 column, UTF-8 byte offset
+  encoding.ts            bytes -> text or a refusal (BOM, NUL sniff, UTF-8)
+  text.ts                Rust's trim and whitespace, not JavaScript's
+report/format.ts         the Markdown report; escapes every path and key
+mcp/                     the npm server: tools.ts (detect_unicode_risks),
+                         transport.ts (escapes non-ASCII after serializing)
+utils/escape.ts          the one \uXXXX escape, shared by report and transport
+ui/, config/, telemetry/ as in every sibling
+types.ts                 shared types only — no logic
 ```
 
-The seam that matters: **`scan.rs` is the only path either surface
-calls.** `cli.rs` and `mcp/` are projections of one implementation, and
-`tests/contracts.rs` drives both over one tree and asserts they return
-identical reports. A surface that grows its own copy of a rule is a bug.
+Conventions: factory functions + `Object.freeze` (no classes outside the position sweep), guard clauses, dependency bags typed inline at the consumer — see **Code style** below. Both the manifest and the runtime strings are localized into 12 locales; see **Toolchain**.
 
-Everything below `detect/` is pure, which is why the decision layer —
-including the two rules the tool rests on, report safety and the
-script-context refusal — tests from a string with no disk and no flake.
+## The engine is the crate's
+
+`src/detection/` is a port of `crate/src/detect/`, held to it three ways: the corpus (`check-detection-parity.ts`, and `corpus.test.ts`), the differential (thousands of generated documents through both MCP servers, codepoints drawn from every plane), and the definition check. A difference between them is a bug in one of them, never a surface difference.
+
+- **No Unicode question is asked of the JavaScript engine.** Scripts, script extensions, letters, digits, whitespace, combining classes, decompositions, compositions, homoglyph prototypes and ASCII lookalikes all come from `crate/fixtures/unicode-tables.json`, which the crate renders from its own dependencies and its pinned toolchain; the crate test `the_shared_unicode_tables_are_this_crates` fails when the two disagree. No `\p{…}`, no `String.prototype.normalize`, no `toUpperCase` decides a finding. The editor's engine and a user's Node each carry their own Unicode version, and they disagree with the crate on exactly the newest characters. Regenerate with `UNICODE_LE_WRITE_TABLES=1 cargo test --locked tables` in `crate/`, and read the diff.
+- **Indices are UTF-16; widths that are compared across lines are UTF-8 bytes.** The scanners work in string indices and convert to a byte offset once, in `position.ts`. Where the crate compares one line's length with another's — YAML indentation — the port measures bytes too, or a line indented with U+1680 nests differently. The differential found this; `formats/yaml.test.ts` pins it.
+- **Rust's whitespace, not JavaScript's.** `text.ts` trims with the crate's `White_Space` table: U+0085 and U+3000 are whitespace, U+FEFF is not.
 
 ## Code style
 
-These are not preferences to weigh against convenience. They are the
-shape the code is expected to take, and a review rejects work that
-ignores them. The reason each one exists is stated, because a rule
-without a reason gets cargo-culted into places it does not belong.
+These are not preferences to weigh against convenience. They are the shape the
+code is expected to take, and a review rejects work that ignores them. The
+reason each one exists is stated, because a rule without a reason gets
+cargo-culted into places it does not belong.
 
 ### Control flow
 
 **Guard clauses first, then the work.** Every function opens with its
-preconditions, each returning immediately. The body that follows is the
+preconditions, each one returning immediately. The body that follows is the
 happy path at a single indent level, and it reads top to bottom.
 
-**No statement-position `else`.** An `else` is a guard clause that has
-not been extracted yet. Two branches become an early return
-(`let Some(x) = ... else { return }`); many branches become a `match`
-that returns from every arm, or a lookup table. This is the rule that
-does the most work in practice — it is what keeps nesting flat and stops
-a function growing a second responsibility inside its own `else`.
+```ts
+// Yes — preconditions leave, then the real work runs unindented.
+function extract(document: TextDocument, config: Configuration): Result {
+	if (!document) return EMPTY;
+	if (!isSupported(document.languageId)) return unsupported(document.languageId);
 
-**Value-position `if/else` is fine.** `let x = if cond { a } else { b }`
-is Rust's ternary and reads as one expression.
+	const text = document.getText();
+	if (!text.trim()) return EMPTY;
 
-**`match` is preferred** over any chain of condition tests on the same
-value; use match guards rather than `if/else` inside arms.
+	return runExtraction(text, config);
+}
+```
 
-**Maximum nesting is two levels inside a function.** A third level means
-the inner block wants to be its own named function.
+**No `else`. No `else if`.** An `else` is a guard clause that has not been
+extracted yet. Two branches become an early return; many branches become a
+lookup table or a `switch` that returns from every arm. This is the rule that
+does the most work in practice — it is what keeps nesting flat, keeps diffs
+small, and stops a function growing a second responsibility inside its own
+`else`.
 
-Prefer combinators where they read cleanly: `bool::then_some`,
-`Option::map/filter/is_some_and`, `?`.
+```ts
+// No.
+if (kind === 'hex') {
+	return parseHex(value);
+} else if (kind === 'rgb') {
+	return parseRgb(value);
+} else {
+	return null;
+}
+
+// Yes — a table. Adding a format touches one line and no control flow.
+const PARSERS: Readonly<Record<ColorKind, Parser>> = Object.freeze({
+	hex: parseHex,
+	rgb: parseRgb,
+	hsl: parseHsl,
+});
+
+function parse(kind: ColorKind, value: string): Color | null {
+	const parser = PARSERS[kind];
+	if (!parser) return null;
+	return parser(value);
+}
+```
+
+**Maximum nesting is two levels inside a function.** A third level means the
+inner block wants to be its own named function. Loops containing conditionals
+containing conditionals are where bugs hide, because no reader holds all three
+conditions at once.
+
+**Truthy checks.** `if (!value)` rather than
+`if (value === undefined || value === null || value === '')`. The exception is
+real and must be respected: when `0`, `''` or `false` are legitimate values,
+test explicitly (`value === undefined`, `Number.isFinite(value)`). A threshold
+of `0`, an empty string that means "cleared", and `false` from `applyEdit` have
+all been live bugs in this family — the terse form is the default, not a
+licence to ignore the domain.
 
 ### Errors
 
-**`Result<T, String>` for fallible functions.** No `anyhow`, no
-`thiserror`, no `clap`. Arguments are hand-parsed in `cli.rs`.
+**Every error path is handled and says something true.** A message names what
+failed, why, and what state the user is now in. "Extraction failed" is not a
+message; "Could not replace the document contents: the edit was rejected" is.
 
-**Every error path says something true.** A message names what failed,
-why, and what state the caller is now in. "Scan failed" is not a message;
-"not valid UTF-8 at byte 3: the encoding is unknown and is not guessed"
-is.
+**Never swallow.** No empty `catch`, no `catch { return null }` that erases a
+cause the caller needed, no `|| true`, no `continue-on-error`. If a failure is
+genuinely ignorable, the `catch` says why in a comment.
 
-**Never swallow.** No `let _ =` over a fallible call that mattered, no
-`|| true`, no `continue-on-error` in CI. If a failure is genuinely
-ignorable, a comment says why.
+**Failures are values where the caller must react.** A parse failure that the
+user should see is reported through the callback or return value the caller
+supplied — not thrown past it, and never turned into a silent empty result.
+Reserve `throw` for programmer error and for unwinding to a command's outer
+handler, which is the one place that decides what the user sees.
 
-**Refuse rather than guess.** Ambiguous input returns a named refusal
-reason, never a plausible answer. Each of the three reasons exists
-because the honest answer was "I did not judge this", and each says what
-*did* run. A test that passes by normalizing something that should have
-been refused is the bug this whole family exists to prevent.
-
-**Never report success you did not achieve.** A file that vanishes from
-the report reads to whoever ran it as a file that was clean, and that is
-the one thing this tool must never say.
+**Never report success you did not achieve.** Check what the API returned.
+`vscode.workspace.applyEdit` resolves `false` for a read-only document; a
+cancelled operation delivers nothing. Announcing a count over work that never
+happened is the single most repeated defect in this family's history.
 
 ### Data
 
-**Immutable by default.** Build a new value and return it; never mutate a
-parameter. A `&mut` in a signature needs a reason a reader can see.
+**Immutable by default.** `readonly` on every interface field, `ReadonlyArray`
+on every collection you do not own, `Object.freeze` on returned config and
+result objects. Never mutate a parameter. Build a new value and return it.
+Where a mutable working copy is genuinely needed, derive the mutable type
+(`type Draft<T> = { -readonly [K in keyof T]: T[K] }`) rather than
+hand-maintaining a second parallel interface that drifts.
 
-**No trait with a single implementation**, no layers, registries,
-managers or services. Keep modules flat.
+**Composition over inheritance.** Factory functions returning frozen objects,
+not classes and not `extends`. Dependencies arrive as a parameter — a typed
+deps bag — so a test supplies a fake without a framework. There is no
+inheritance hierarchy anywhere in this fleet and there should never be one.
 
-**Tables over branches.** The character tables in `detect/characters.rs`,
-the `KINDS` table in `detect/mod.rs`, the `FLAGS` list in `cli.rs`: one
-table, consulted by the parser, the usage text and the tests, so a kind
-cannot exist that no filter can name and a filter cannot name a kind that
-does not exist.
+```ts
+export function createNotifier(deps: Readonly<{ config: Configuration }>): Notifier {
+	return Object.freeze({
+		showInfo: (message: string) => { /* ... */ },
+		showError: (message: string) => { /* ... */ },
+	});
+}
+```
 
-**Define it once.** A duplicated rule is a rule that drifts and then gets
-fixed in one copy.
+### Structure
+
+**Logic and presentation are separate, always.** Extraction, analysis and
+conversion modules compute and return data. They never call
+`vscode.window.*`, never format a user-facing sentence, never decide whether a
+notification is shown. `ui/` renders; `commands/` orchestrates. The test for
+whether you got this right: a logic module should be unit-testable without the
+`vscode` mock at all.
+
+**Where a UI framework is involved, the same rule applies to the render.**
+Compute above, return markup below. A render body holds no conditionals beyond
+a trivial ternary, no data shaping, no derivation — those are named values or
+functions above it. Anything else produces JSX no one can read, and it hides
+the logic from the tests.
+
+**Commands are thin.** A command reads config, calls logic, hands the result to
+the UI layer, and handles failure. When a command file grows a parser or a
+formatter, that code belongs in `extraction/` or `ui/`.
+
+**No god files.** Past ~300 lines, a file is doing more than one job and wants
+splitting along the seam that is already visible in its exports. `types.ts`
+holds types only — no logic, ever.
+
+**Separation of concerns, without ceremony.** One module per real concept, not
+one per function. A `utils/` folder of single-line files is as unmaintainable
+as a god file; both make you read the whole tree to understand one path.
+
+**Define it once.** Duplicate regexes, duplicate `fullDocumentRange`,
+duplicate "is this a supported scheme" checks — each has already shipped as a
+bug in this family, because copies drift and only one copy gets fixed. When you
+find yourself writing something that exists elsewhere, move it to a shared
+module in the same commit.
 
 ### Comments
 
-Comments explain **why**, never what. A comment restating the code is
-noise that goes stale. A comment recording the reason a non-obvious
-choice was made — the constraint, the bug it prevents, the measurement
-behind a threshold — is the most valuable line in the file, and it is
-what keeps the next person from "simplifying" it back into a defect.
+Comments explain **why**, never what. A comment restating the code is noise
+that goes stale. A comment recording the reason a non-obvious choice was made —
+the constraint, the bug it prevents, the API quirk it works around — is the
+most valuable line in the file, and it is what keeps the next person from
+"simplifying" it back into a defect.
+
+---
 
 ## Invariants (things that were once broken — keep them true)
 
-- **A finding never carries the character it found.** `codepoints` and
-  `resembles` are `U+XXXX`; `detail` is prose written in this crate.
-  There is no field holding source text and there will not be one. A
-  report that pasted a raw U+202E would reorder the terminal, the diff
-  and the ticket of whoever read it, and the tool would be the delivery
-  mechanism for the thing it detects. Asserted at three levels:
-  `detect::hazards` over the whole corpus, `tests/contracts.rs` at the
-  process boundary on both streams, and `tests/fuzz.rs` on every
-  generated document.
-- **Nothing this tool prints is ever non-ASCII, including the two fields
-  it does not author.** `file` is the caller's path and `key` is text out
-  of the document, so neither can be rewritten — a path has to open and a
-  key has to match. Both are **escaped** instead: every non-ASCII
-  codepoint is emitted as `\uXXXX`, which is JSON's own escape, so the
-  wire bytes are inert *and* a parser decodes them back byte for byte.
-  The exemption those two fields used to have is exactly what made a
-  hostile file name exploitable. `escape` is the one place that decides
-  it, applied to the **serialized document** — escaping the field first
-  does not survive `serde_json`, which escapes the backslash and ships
-  `\\u202E`.
-
-  **Practical consequence: no em dashes, no curly quotes, no arrows in
-  any `detail` or refusal string.** Doc comments may have them; anything
-  reaching the output may not. This has already broken once.
-- **The confusable check fires on mixing, never on a script.** Text
-  wholly in one non-Latin script produces nothing. Getting this wrong
-  makes the tool unusable on the internationalised repositories that most
-  need it, and once it is switched off, so is the Trojan Source screen.
-- **Declaring a script turns the checks on, never off — and never on
-  harder.** The `intentional_script_context` share is measured over the
-  **undeclared** scripts alone. Measuring every non-Latin letter and
-  naming only the undeclared ones refused a file the caller had already
-  accounted for — which meant declaring the script a repository is
-  written in disabled the homoglyph check for every file in it, exactly
-  where one would hide. Pinned by
-  `the_share_is_measured_over_the_undeclared_scripts_only` and
-  `a_declared_file_is_judged_and_its_homoglyph_is_still_found`.
-
-  **`scripts::judge` got the same direction wrong twice**, so the
-  property is now stated on its own:
-  `declaring_a_script_never_adds_a_finding`. The second time, a word that
-  mixed an undeclared script with Latin returned early and never reached
-  the compatibility check, so declaring a script *added* four findings on
-  `設ＦＩＬＥ`. **A compatibility form is not a script question** — a
-  full-width `Ｆ` reads as `F` in any file — and the guard against a
-  third occurrence is structural rather than a comment: `compatibility`
-  does not take the declared scripts as a parameter, so nothing can gate
-  it by them. Only `mixing` may see them.
-- **Columns are UTF-16 code units and lookups are checkpointed.**
-  UTF-16 is what an editor's ruler shows. Counting them from the line
-  start on every lookup is quadratic on a minified bundle — one line
-  holding the whole document, one lookup per finding — which measured
-  21.8s for 20,000 findings before `detect/position.rs` grew checkpoints
-  and 0.33s after. `tests/budget.rs` is what keeps it.
-- **Paths in the report are separated by `/` on every platform.** A
-  report is diffed against one produced on another machine. `\` on
-  Windows made every path differ for no reason a reader could see, in a
-  sibling, for a whole release. `scan::report_path` is the one place that
-  decides this; asserted by `tests/platform.rs`. Separator, not encoding:
-  the escaping above is a different rule and the two do not collide.
-- **A format decides how a finding is addressed, never whether it
-  exists.** This is the inversion the whole `detect/locate.rs` layer
-  rests on, and it is the opposite of a format-aware extractor. Every
-  scanner runs over the same raw text whatever the format is, so a
-  document nothing can parse is still scanned and still reports
-  everything in it — it loses its key paths and not one finding. The
-  readers are line scanners rather than parsers, which is also what keeps
-  the offsets the raw document's. `a_format_never_changes_which_findings_exist`
-  runs one document through every reader and asserts the findings are
-  identical each time.
-
-  **The corollary is why `coverage-matrix` checks the readers.** A lost
-  key path costs no finding, so a reader that quietly stopped naming
-  anything would pass every other test in the suite.
-- **A leading UTF-8 BOM is not stripped**, unlike the sibling crates. The
-  report carries byte offsets into the file on disk; deleting three bytes
-  would move all of them. It is excluded from the findings instead, which
-  is a rule about meaning rather than an edit to the input.
-- **No encoding is guessed.** Byte-order mark first, binary sniff second,
-  UTF-8 last — in that order, because a UTF-16 file carries NUL bytes and
-  sniffing first names the wrong reason. A mis-decode here does not
-  merely miss findings, it *invents* them.
-- **Nothing is rewritten.** No `--fix`, no normalization, no stripping.
-  Contract tests assert no flag and no tool schema offers it, and that a
-  scanned file is byte-identical afterwards.
-- **stdout is protocol, stderr is human. There is no `--json` flag.** One
-  JSON document for the run, `schema: 1`, no timestamp — two runs over an
-  unchanged tree produce identical bytes.
-- **Refusals speak the caller's vocabulary.** An MCP caller has no
-  command line; no message aimed at one names a flag, and a test asserts
-  no MCP output contains `--`.
-- **No network, on any surface, ever.**
-
-## Testing
-
-The default suite runs everywhere on every push. Six further tiers run
-in CI, and **each exists because something real got through a green
-suite**; each names the bug it would have caught.
-
-| Tier | What it reaches that unit tests cannot | Where |
-|---|---|---|
-| `contracts` | the exit codes and the stream contract, driven against the built binary | `crate/tests/contracts.rs` |
-| `hazards` | a real filesystem: a byte-order mark, a non-UTF-8 file, a FIFO, a permission-denied file, a 260-character path, a symlink loop, an empty file, a one-line bundle | `crate/tests/hazards.rs` |
-| `platform` | a second operating system: separators, case folding, reserved device names, CRLF against a lone CR, stdin closing early, `TZ` set and unset | `crate/tests/platform.rs` |
-| `fuzz` | text nobody would type, time-boxed and seeded | `crate/tests/fuzz.rs` |
-| `budget` | a clock: a wall-clock ceiling plus linearity in both directions | `crate/tests/budget.rs` |
-| `scenarios` | a document far larger than an editor opens | `crate/tests/scenarios.rs` |
-| `coverage-matrix` | whether every format reader, `kind`, `severity` and `reason` is reachable from a real fixture | `crate/src/detect/corpus.rs` |
-
-Rules that hold across all of them:
-
-- **A skipped case is never reported as a pass.** `hazards` and
-  `platform` name every case the platform cannot express on stderr;
-  `budget` and `scenarios` say plainly that they did not run. **A gated
-  tier that no job sets is a tier that has never run** — a sibling
-  shipped a scenarios suite asserting a shape the code had stopped
-  producing — so every gate above has the job that turns it on.
-- **The tree is built at runtime**, not checked in: Windows cannot hold a
-  FIFO, a permission-denied file, or half of these names in git.
-- **A marker line is not decoration.** `cargo test <filter>` exits 0 when
-  the filter matches nothing, so a renamed test would leave a CI job
-  green and checking nothing. `coverage-matrix` prints markers and the
-  job greps for them.
-- **Every bug fix ships with a regression test that fails before the
-  fix**, and the failure is *observed*, not assumed. The quadratic above
-  was proved by reverting the fix and watching
-  `four_times_the_content_in_one_document_is_not_six_times_the_clock`
-  report 13.02× against its 6× limit.
-- **`detect/` carries a 75% line coverage floor per module.** A floor is a backstop against an untested module, not a target: it sits well below where the code actually is, and is not raised to track it.
+- **Nothing the tool emits carries a character it found.** Findings hold `U+XXXX` and English. The two fields the scan did not write — a path and a key path — are escaped to `\uXXXX`: the report through `utils/escape.ts`, the MCP wire by escaping the *serialized* document in `transport.ts`. Escaping a field before serialization would have `JSON.stringify` escape the backslash. `report/format.test.ts`, `mcp.test.ts`, the differential and `check:mcp-bundle` all assert it.
+- **Nothing is rewritten.** No fix, no normalization, no stripping, and the tool schema offers none — a test fails if it ever does.
+- **A file is UTF-8 or refused by name.** The workspace scan reads bytes and decodes them in `detection/encoding.ts`; opening it as a document would let the editor guess an encoding, and a wrong decode invents findings.
+- **An unpaired surrogate is refused, not scanned.** No `&str` can hold one, so the crate cannot be asked; scanning it would report a character the document does not contain.
+- **The bundle must be self-contained.** The VSIX ships `dist/extension.js` only; `scripts/check-bundle.js` (run in `vscode:prepublish` and CI) does a static require scan AND loads the bundle with `vscode` stubbed. The Unicode tables are bundled into both the extension and the MCP server; `check:mcp-bundle` holds the server under its 600 KB ceiling.
+- **`CONFIG_DEFAULTS` must equal package.json defaults.** `config.test.ts` asserts parity over every declared setting, and that the kind filter offers exactly the kinds the engine knows.
+- **Every declared setting must have a consumer, and every declared command must be registered.** The integration suite checks the second in a real host.
+- **nls catalogues stay in key-parity**, and every translation is in its own language — `letools-site`'s `check-locales` holds that across the family.
+- **The MCP server must never reference `vscode`**, and launching it needs `ELECTRON_RUN_AS_NODE=1`; `scripts/e2e-vsix.js` spawns the installed server exactly as `provider.ts` does.
 
 ## Toolchain
 
-- **Rust**, `edition = "2024"`, MSRV **1.88** — declared in
-  `crate/Cargo.toml` and verified by the `msrv` CI job, which is the only
-  thing that stops the declared floor becoming a fiction.
-  `crate/rust-toolchain.toml` gives contributors the toolchain CI uses.
-- **Clippy pedantic, deny warnings.** `cargo clippy --all-targets --
-  -D warnings`.
-- **No inline `#[allow(...)]` anywhere.** The `policy` CI job greps
-  `crate/src` for one. A lint you mean to relax goes in
-  `[lints.clippy]` in `crate/Cargo.toml` with a comment saying why, so
-  every relaxation is visible in one place.
-- **`unsafe` is forbidden crate-wide** (`[lints.rust]`), with no platform
-  exemption. A test is not an exemption either: `tests/hazards.rs` shells
-  out to `mkfifo` rather than calling libc.
-- **Overflow checks stay on in release.** Every output is a claim
-  somebody scripts against — a line number, a column, a byte offset, a
-  count — and a wrapped number is silently wrong data in a report whose
-  whole value is honesty, which is worse than a crash.
-- **Four dependencies beyond serde**: three unicode-rs crates carrying
-  data this crate must not copy, and `ignore` for the walk. Every one is
-  justified by a comment in `crate/Cargo.toml`. Justify any addition; a
-  crate that *rewrites* text has no place here whatever it detects on the
-  way.
-- **Coverage** is `cargo llvm-cov`, enforced per module rather than on
-  the total: a total hides one module sliding while the others carry it.
+- **Runtime targets:** `engines.vscode` is the supported floor and `@types/vscode` is pinned to it **exactly**. A caret there lets the type surface drift ahead of the version users actually run, so code compiles against APIs that are not there at runtime. Dependabot is configured to never bump it.
+- **Build:** esbuild bundle (`bun run build`, `build:prod` minified). `tsc` is typecheck-only (`noEmit`) and covers test files. TypeScript 7.
+- **Unit tests:** vitest 4; `vscode` aliased to `src/__mocks__/vscode.ts` (stateful mock with `_reset/_set` helpers). Coverage provider `v8`, thresholds enforced at **75 lines / 80 functions / 60 branches / 75 statements**. These are a backstop against a module nobody tested, not a target — they sit well below where the code actually is, and they are not raised to track it. Lower them only with a reason; do not raise them to chase a number.
+- **Integration tests:** `bun run test:integration` — `@vscode/test-cli` launches a real VS Code (config in `.vscode-test.mjs`, tests compiled via `tsconfig.it.json` to `out-test/`). That project targets `node16` module resolution; TypeScript 7 removed `node10`, which `"Node"` resolved to.
+- **Installed-VSIX tests:** `bun run test:e2e-vsix` installs the built `.vsix` into a clean VS Code profile and drives it. This is the only test that exercises the artifact users receive, and it runs in CI.
+- **Lint/format:** Biome (tabs, single quotes). `__fixtures__`/`__snapshots__` are exempt — formatting fixtures would corrupt goldens. `biome.json` is one of the files `letools-site/scripts/check-fleet.ts` holds byte-identical across all ten repos; change it in one, copy it to the rest, and let `bun run check:fleet ../` say whether a copy was missed.
+- **Packaging:** `bun run package` → `release/*.vsix`. `.vscodeignore` is an allow-list; the VSIX ships only the bundle, the MCP server, the catalogues, the icon and the docs. Packaging uses `--no-dependencies`: the bundle is self-contained, so walking the npm tree served no purpose and broke after any dependency change.
+- **Localization:** two separate mechanisms. The 12 `package.nls.*.json` catalogues in `src/i18n/` localize **manifest** strings (VS Code `%key%` substitution) and are copied to the package root at prepublish, then removed by `clean:i18n`. The 12 `l10n/bundle.l10n.*.json` catalogues localize **runtime** strings via `vscode.l10n.t()`, enabled by `"l10n": "./l10n"` in package.json. They fail independently: a working manifest says nothing about the runtime bundles. The rules that keep both correct are under **Code style** above.
+
+- **npm package:** `bun run build:npm` assembles `mcp/` and writes its version from the root manifest, so the two can never claim the same version while carrying different code. `bun run check:npm-package` packs it, installs the tarball into a throwaway project and drives the *installed* binary through a handshake — which is what `npx` does, minus the registry. Run it before publishing: a version cannot be reused, and the unpublish window is 72 hours.
+
+## Generated documentation
+
+Two README sections are generated. Do not hand-edit the content between their markers.
+
+- `bun run test:coverage && bun run coverage:readme` writes the Testing section from `coverage/coverage-summary.json`. CI runs `coverage:readme:check`, which fails when the committed numbers no longer match a real run — coverage is compared within 1 percentage point (it is not bit-identical across machines), while test counts are derived from source and must match exactly.
+- `bun run benchmark && bun run perf:readme` writes the Performance section from a real run of `examine`. This is **not** checked in CI: throughput is machine-specific, so a hosted runner would fail it for reasons that say nothing about the code. The host is printed with the numbers instead.
+
+A sibling's README once carried hand-written test counts and throughput figures that drifted until they were false. Generating them is what stops that recurring.
 
 ## Security & automation
 
-- **CodeQL** runs on push, PR and weekly, configured in
-  `.github/codeql-config.yml`. Fixtures are excluded on purpose: they
-  contain inputs that are *supposed* to look dangerous, and scanning them
-  produces findings that can only ever be dismissed.
-- **`cargo audit`** runs as its own CI job.
-- **Dependabot** opens grouped weekly PRs.
-- **Auto-merge is workflow-driven, not GitHub-native**: `main` has no
-  required status checks, so native auto-merge would land a PR before CI
-  started. `dependabot-auto-merge.yml` waits for the run to conclude.
-- **Actions are pinned to commit SHAs.** A tag is mutable. The trailing
-  `# vX.Y.Z` comment is what Dependabot reads and rewrites.
-- **`ci-crate.yml` is workflow-dispatchable.** Push events are not
-  guaranteed: during a GitHub Actions incident they are throttled and
-  silently dropped, and a dropped event never replays, leaving a commit
-  with no way to be verified.
+- **CodeQL** runs on push, PR and weekly (`javascript-typescript` + `actions`), configured in `.github/codeql-config.yml`. Test files and fixtures are excluded on purpose: they contain inputs that are supposed to look dangerous, and scanning them produces findings that can only ever be dismissed.
+- **Dependabot** (`bun` ecosystem, not `npm` — the npm updater rewrites `package.json` without regenerating `bun.lock`, so its PRs can never pass the frozen-lockfile gate) opens grouped weekly PRs. `cargo` covers `crate/` and `zed/`.
+- **Auto-merge** is workflow-driven, not GitHub-native: `main` has no required status checks, so native auto-merge would land a PR before CI started. `dependabot-auto-merge.yml` waits for every other check on the head commit to pass, then merges any update but a major, runtime dependencies included: a merge publishes nothing, and the VSIX only ships from a manual release. Majors need a human. After a merge it dispatches CI on `main`, because a merge made with `GITHUB_TOKEN` starts no push run and each PR was only tested against its own base. The workflow is byte-identical across all sixteen tool repos.
+- **Actions are pinned to commit SHAs.** A tag is mutable and this repo holds a publish token. The trailing `# vX.Y.Z` comment is what Dependabot reads and rewrites.
+- **Branch safety:** a `main-safety` ruleset blocks deletion and force-push. Pushes to `main` are otherwise unrestricted by design.
+- Secret scanning and push protection are enabled. `VSCE_PAT` and `OVSX_PAT` live in repo secrets and in Doppler (`extensions` / `prd`).
 
 ## Agent and editor instructions
 
-Every major coding assistant looks for its own instruction file, so each
-one is present and each is a thin pointer to this document:
+Every major coding assistant looks for its own instruction file, so each one is
+present and each is a thin pointer to this document:
 
 | File | Tool |
 |---|---|
@@ -337,15 +261,12 @@ one is present and each is a thin pointer to this document:
 | `.clinerules` | Cline |
 | `.github/copilot-instructions.md` | GitHub Copilot |
 
-**Keep them thin.** They restate the non-negotiables and route the reader
-here; they must never grow a second copy of the standard, because a copy
-drifts and then two tools disagree about the same repository. Change the
-standard here, and only the pointer's short list if a non-negotiable
-itself changed.
+**Keep them thin.** They restate the non-negotiables and route the reader here;
+they must never grow a second copy of the standard, because a copy drifts and
+then two tools disagree about the same repository. Change the standard here,
+and only the pointer's short list if a non-negotiable itself changed.
 
-None of them ship: `crate/Cargo.toml` excludes `AGENTS.md` and
-`CLAUDE.md` from the package, and the rest are above the crate directory
-where `cargo package` cannot reach.
+None of them ship: `.vscodeignore` is an allow-list, so the VSIX is unaffected.
 
 ## Git identity
 
@@ -355,92 +276,70 @@ Every commit uses the GitHub noreply address:
 13629544+nolindnaidoo@users.noreply.github.com
 ```
 
-A real address in commit metadata is public forever — GitHub's API serves
-it for any public repo, and scrapers harvest it. Never set a real address
-in `user.email`, globally or repo-locally, and never commit with one. A
-repo-local `user.email` silently overrides the global one, so check
-`git config user.email` in a fresh clone before the first commit.
+A real address in commit metadata is public forever — GitHub's API serves it
+for any public repo, and scrapers harvest it. Never set a real address in
+`user.email`, globally or repo-locally, and never commit with one. GitHub's
+*Block command line pushes that expose my email* is the backstop; the global
+config is the default. A repo-local `user.email` silently overrides the global
+one, so check `git config user.email` in a fresh clone before the first commit.
 
 ## Commits
-- **Commits are conventional and CI enforces it.** The `commits` job in
-  `.github/workflows/ci-crate.yml` validates every pushed commit's subject
-  against the same pattern as `.githooks/commit-msg`. The hook is opt-in
-  per clone (`git config core.hooksPath .githooks`), so `--no-verify` and
-  a fresh checkout defer the check to CI rather than escaping it. Scopes
-  may be comma-separated.
 
-Subjects use a conventional prefix — `feat:`, `fix:`, `docs:`, `test:`,
-`ci:`, `build:`, `chore:`, `refactor:`, `perf:`, `revert:` — an optional
-`(scope)`, and an imperative summary with no trailing period. The body
-says why the change was needed and what it prevents; a subject alone is
-rarely enough to reconstruct a decision six months later.
+Subjects use a conventional prefix — `feat:`, `fix:`, `docs:`, `test:`, `ci:`,
+`build:`, `chore:`, `refactor:`, `perf:`, `revert:` — an optional `(scope)`,
+and an imperative summary with no trailing period. The body says why the
+change was needed and what it prevents; a subject alone is rarely enough to
+reconstruct a decision six months later.
 
-The `commit-msg` hook in `.githooks/` rejects the message before the
-commit exists. It is POSIX shell rather than a call out to Node, because
-the sibling extension repos share a `scripts/commit-lint.js` and this
-repo has no JavaScript in it at all. Point git at it once per clone:
+This is enforced, not just documented:
 
-```bash
-git config core.hooksPath .githooks
-```
+- **`commit-msg` hook** — `bun run hooks:install` points `core.hooksPath` at
+  `.githooks/`, and `prepare` runs it on install, so a fresh clone is wired
+  after `bun install`. It rejects the message before the commit exists.
+- **CI** — the `Commit messages` job runs the same validator over the pushed
+  range. The hook is skippable with `--no-verify`; this is not, so skipping it
+  delays the failure rather than avoiding it.
 
-Merge and revert commits are exempt — git writes those subjects, not a
-person.
-
-**The hook is not the only gate.** The `commits` job in `ci-crate.yml` runs
-the same check over the pushed range, so `--no-verify` delays the failure
-rather than avoiding it — the same arrangement the extension repos have.
+Both call one implementation, `scripts/commit-lint.js`, so the rules cannot
+drift apart. Check a branch yourself with `bun run lint:commits`. Merge commits
+are exempt — git writes those subjects, not a person. Only the commits in a
+push are checked, so history predating the gate is left alone.
 
 ## Release
 
-1. Bump `version` in `crate/Cargo.toml`, and write both CHANGELOG
-   entries: the root [CHANGELOG.md](CHANGELOG.md) for what a reader of
-   the repository needs, and [`crate/CHANGELOG.md`](crate/CHANGELOG.md)
-   for what ships inside the package. The entry must describe what
-   actually changed, including bug fixes.
-2. Update SPEC.md in the same commit if behaviour moved. A claim in a doc
-   that the code does not back is the defect this family is least willing
-   to ship.
-3. CI green on all three operating systems — including the five
-   hardening jobs, not only `test`.
-4. Tag the commit being released, so the tag is the artifact rather than
-   an approximation of it.
-5. Dispatch the **Release (crate)** workflow with `publish` unchecked.
-   The `preflight` job runs the gates, asserts the packaged crate carries
-   `fixtures/` (a fixture that does not travel makes the published tests
-   unrunnable by anyone else), asserts the version is not already on
-   crates.io, asserts `crate/CHANGELOG.md` documents it, and finishes
-   with `cargo publish --dry-run`.
-6. Dispatch it again with `publish` checked. **Dispatch-only, never on a
-   tag push**: a crates.io version can never be reused, so the
-   irreversible step is one someone chooses on purpose. The token lives
-   on the `crates-io` GitHub environment and is verified to be non-empty
-   before anything irreversible happens.
+**Five files carry the extension version, and CI fails unless all five agree.**
+`package.json`, `mcp/package.json`, `server.json` (**both** `.version` and
+`.packages[0].version`), `zed/extension.toml`, and `zed/Cargo.toml` — and
+regenerate `zed/Cargo.lock` with it, or `cargo test --locked` in `zed/` breaks.
+The same CI step pins registry identity: `server.json.name` must equal
+`mcp/package.json.mcpName`, `server.json.packages[0].identifier` must equal
+`mcp/package.json.name`, and `zed/src/lib.rs` must install that npm name.
+
+**This gate is not relaxable.** The MCP registry verifies ownership by reading
+`mcpName` out of the *published* npm package, so a mismatch is only discoverable
+after the version is spent — and a version can never be republished. That is why
+this is a gate rather than a convention. A release that bumps only
+`package.json`, `mcp/package.json` and `server.json` leaves both Zed manifests
+behind and reds the tree; that happened to four repos in one release round.
+
+The crate version is deliberately **outside** this gate — `crate/Cargo.toml`
+moves on its own cadence, and the crate sitting at 0.x while the extension starts at 1.0 is intended.
+
+1. Bump `version` in package.json and write the CHANGELOG entry. The entry must describe what actually changed, including bug fixes — it ships inside the VSIX and renders on the listing page.
+2. Regenerate the README sections (`coverage:readme`, and `perf:readme` if behaviour changed) and commit them.
+3. CI green on all three OSes. That includes lint, typecheck, coverage, the bundle gate, packaging, integration tests, and the installed-VSIX e2e.
+4. Tag the commit being released, so the tag is the artifact rather than an approximation of it.
+5. Dispatch the `Release` workflow. It takes two independent opt-ins — `marketplace` (default **on**) and `openvsx` (default **off**) — because a version cannot be republished, so a run that publishes one registry and fails on the other is only recoverable by re-running with the failed target alone. It validates credentials before doing anything irreversible.
+
+**Open VSX defaults off deliberately.** `ovsx publish` takes no namespace argument; it derives the namespace from `publisher` in the VSIX. Enabling it publishes to whatever `package.json` currently names, with no confirmation.
+
+**The npm package ships from the same tag**, as a third opt-in on the `Release` workflow. It publishes by **trusted publishing** — GitHub mints a short-lived OIDC identity token and npm verifies it against the publisher configured on the package — so there is no npm credential in this repo, in Doppler, or in CI. That is why `id-token: write` is scoped to that job alone, and why it cannot run from a laptop. `bun run publish:npm` exists for a bootstrap publish only (a package must exist before a trusted publisher can be attached to it) and needs a token.
+
+Order matters beyond this repo: npm must be published *before* any Zed registry PR merges, because Zed's shim resolves the package at runtime — a merged extension pointing at an unpublished version is broken for everyone who installs it.
 
 ## Known limitations (documented, not bugs)
 
-- **A path named explicitly that is not a regular file or a directory
-  vanishes from the report.** `walk::collect` selects regular files, so a
-  FIFO, a socket or a device named on the command line produces a run
-  with zero files and exit 0 — which reads as a clean answer about a file
-  that was never looked at, and sits against `walk.rs`'s own rule that a
-  file named explicitly is always read. It does not hang, which is the
-  hazard that matters, and `a_fifo_does_not_block_the_run` pins that
-  floor. **Unresolved: whether such a path should be a named refusal or a
-  malformed question.**
-- **`unicode-security` is on Unicode 16.0 data while `unicode-script` is
-  on 17.0.** A confusable pair added in Unicode 17 is not detected, and
-  the `unassigned-or-private-use` check is a release ahead of the
-  confusable check. Neither is a correctness bug; both are the cost of
-  standing on maintained data instead of copying it, and both improve
-  when upstream does. Written down in `crate/SPEC.md` rather than glossed.
-- **One false positive is left on purpose, outside JSON.** A backslash
-  escape immediately followed by non-Latin text makes a mixed word:
-  `"Hello\nПривет"` contains the byte run `nПривет`. Inside a JSON
-  string the grammar settles it — `\n` is a line feed, so the JSON
-  reader hands the word splitter the escape ranges and the word breaks
-  there. In a `.rs`, a `.py` or a `.txt` it is still reported, because
-  the bytes really are a Latin letter followed by Cyrillic and a
-  backslash is an ordinary character where `C:\Привет` is a path.
-  Resolving it needs a grammar that says so, and this crate has one for
-  JSON and for nothing else it reads. `--kind` narrows it away.
+- Everything in `crate/SPEC.md`'s **Non-goals** and **Not in v1** holds here: no baseline file, no per-path script expectations, no restriction-level reporting, and silence is not a clearance — a confusable pair newer than the tables is not flagged.
+- The active-document command reads the text the editor holds, so a leading byte-order mark the editor stripped is not in the coordinates, and a file the editor decoded from UTF-16 is screened as decoded. The workspace scan is the path that refuses an encoding.
+- The report's headings are localized; each finding's detail is the engine's English, identical to the CLI and both MCP servers, because it is part of the shared answer.
+- The workspace scan's excludes are VS Code globs passed to `findFiles`, so `files.exclude` does not also apply while they are set.
