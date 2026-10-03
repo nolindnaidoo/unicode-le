@@ -122,7 +122,12 @@ async function findFiles(
 			out.push(uri);
 		}
 	}
-	return out.slice(0, maxFiles);
+	// findFiles promises no order, so two scans of one tree would list files
+	// differently. A plain comparison rather than localeCompare: the order must
+	// not change with the editor's display language.
+	const byPath = (a: vscode.Uri, b: vscode.Uri) =>
+		a.path < b.path ? -1 : Number(a.path > b.path);
+	return out.sort(byPath).slice(0, maxFiles);
 }
 
 /** One file's result, or undefined when it is over the size limit. */

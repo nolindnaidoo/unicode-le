@@ -80,7 +80,7 @@ describe('unicode-le.detect', () => {
 		);
 		await runCommand('unicode-le.detect');
 		expect(report()).toContain('mixed-script');
-		expect(report()).toContain('`auth.provider`');
+		expect(report()).toContain('Key `auth.provider`');
 		expect(report()).not.toContain('а');
 	});
 
@@ -137,11 +137,18 @@ describe('unicode-le.scanWorkspace', () => {
 		});
 		await runCommand('unicode-le.scanWorkspace');
 		const text = report();
-		expect(text).toContain('## src/login.ts');
-		expect(text).not.toContain('## src/clean.ts');
+		expect(text).toContain('## `src/login.ts`');
+		expect(text).not.toContain('`src/clean.ts`');
 		expect(text).toContain('`encoding_unknown`');
 		expect(text).toContain('`binary_or_undecodable`');
 		expect(text).toContain('in 4 file(s) scanned');
+	});
+
+	it('orders the report by path, whatever order the search returned', async () => {
+		_setWorkspaceFiles({ 'z.txt': '‮', 'src/b.ts': '‮', 'a.txt': '‮' });
+		await runCommand('unicode-le.scanWorkspace');
+		const headings = report().match(/^## .+$/gm);
+		expect(headings).toEqual(['## `a.txt`', '## `src/b.ts`', '## `z.txt`']);
 	});
 
 	it('leaves a file over the safety limit unread, and says so', async () => {
@@ -151,7 +158,7 @@ describe('unicode-le.scanWorkspace', () => {
 		expect(report()).toContain(
 			'1 file(s) larger than the safety limit were not read.',
 		);
-		expect(report()).not.toContain('## big.txt');
+		expect(report()).not.toContain('`big.txt`');
 	});
 
 	it('skips what the excludes name', async () => {
