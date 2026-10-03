@@ -74,9 +74,13 @@ function row(finding: Finding): string {
 	return `| ${finding.line} | ${finding.column} | ${finding.kind} | ${finding.severity} | ${codepoints} | ${finding.key === undefined ? '' : `\`${cell(finding.key)}\``} | ${cell(finding.detail)} |`;
 }
 
-/** Escaped for the report and safe inside a Markdown table cell. */
+/**
+ * Escaped for the report and safe inside a Markdown table cell. A backslash is
+ * doubled first, so a pipe after it cannot leave the cell — and a file actually
+ * named `\u202E` reads `\\u202E`, never like the character it is not.
+ */
 function cell(text: string): string {
-	return escapeNonAscii(text)
+	return escapeNonAscii(text.replace(/\\/g, '\\\\'))
 		.replace(/\|/g, '\\|')
 		.replace(/`/g, "'")
 		.replace(/\r?\n/g, ' ');

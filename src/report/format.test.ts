@@ -39,6 +39,25 @@ describe('the report', () => {
 		expect(report).toContain('invoice\\u202Efdp.ts');
 	});
 
+	it('keeps a backslash before a pipe from breaking out of its cell', () => {
+		// The key path is the document's own text: `a`, two backslashes, `|b`.
+		const document = `{"a${'\\'.repeat(2)}|b":"x\u202ey"}`;
+		const { findings, refusals } = examine(document, 'json', {
+			kinds: [],
+			expectedScripts: [],
+		});
+		expect(findings[0]?.key).toBe(`a${'\\'.repeat(2)}|b`);
+		const report = formatReport(
+			[{ file: 'C:\\dir\\k.json', findings, refusals }],
+			1,
+		);
+		// Markdown escapes a pipe only after an odd run of backslashes. Doubling
+		// every backslash first makes the run odd whatever the document held.
+		const run = report.match(/`a(\\+)\|b`/)?.[1] ?? '';
+		expect(run.length % 2).toBe(1);
+		expect(report).toContain('## C:\\\\dir\\\\k.json');
+	});
+
 	it('keeps a key path from breaking out of its table cell', () => {
 		const { findings, refusals } = examine('{"a|b`c":"x‮y"}', 'json', {
 			kinds: [],
