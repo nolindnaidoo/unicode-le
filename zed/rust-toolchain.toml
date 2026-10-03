@@ -2,6 +2,6 @@
 # Dependabot pull request rather than as a red main. The runner's rustup
 # installs this toolchain, target and components on first use.
 [toolchain]
-channel = "1.98.1"
+channel = "1.99.0"
 components = ["rustfmt", "clippy"]
 targets = ["wasm32-wasip2"]
