@@ -80,8 +80,7 @@ function row(finding: Finding): string {
  * named `\u202E` reads `\\u202E`, never like the character it is not.
  */
 function cell(text: string): string {
-	return escapeNonAscii(text.replace(/\\/g, '\\\\'))
-		.replace(/\|/g, '\\|')
+	return escapeNonAscii(text.replace(/[\\|]/g, (character) => `\\${character}`))
 		.replace(/`/g, "'")
 		.replace(/\r?\n/g, ' ');
 }
