@@ -1,27 +1,24 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nolindnaidoo/unicode-le/main/assets/icon.png" alt="Unicode-LE logo" width="96" height="96"/>
+  <img src="src/assets/images/icon.png" alt="Unicode-LE Logo" width="96" height="96"/>
 </p>
 <h1 align="center">Unicode-LE: The Characters That Are Not What They Look Like</h1>
 <p align="center">
-  <b>Scan a tree for the Unicode that hides meaning — and never see it quoted back at you</b><br/>
-  <i>Trojan Source bidi controls, invisibles, homoglyphs, mixed scripts, non-NFC text, spaces that are not the space</i>
+  <b>Find the Unicode that hides meaning in the current file or the whole workspace</b><br/>
+  <i>Bidi controls, invisibles, homoglyphs, mixed scripts, non-NFC text, spaces that are not the space</i>
 </p>
 
 <p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=nolindnaidoo.unicode-le">
+    <img src="https://img.shields.io/badge/Install%20from-VS%20Code-blue?style=for-the-badge&logo=visualstudiocode" alt="Install from VS Code Marketplace" />
+  </a>
+  <a href="https://open-vsx.org/extension/OffensiveEdge/unicode-le">
+    <img src="https://img.shields.io/open-vsx/dt/OffensiveEdge/unicode-le?style=for-the-badge&label=Open%20VSX&color=blue" alt="Open VSX downloads" />
+  </a>
+  <a href="https://www.npmjs.com/package/unicode-le-mcp">
+    <img src="https://img.shields.io/npm/v/unicode-le-mcp?style=for-the-badge&label=MCP%20server&color=blue&logo=npm" alt="unicode-le-mcp on npm" />
+  </a>
   <a href="https://crates.io/crates/unicode-le">
     <img src="https://img.shields.io/crates/v/unicode-le?style=for-the-badge&label=Rust%20CLI&color=blue&logo=rust" alt="unicode-le on crates.io" />
-  </a>
-  <a href="https://crates.io/crates/unicode-le">
-    <img src="https://img.shields.io/crates/d/unicode-le?style=for-the-badge&label=Downloads&color=blue" alt="crates.io downloads" />
-  </a>
-  <a href="https://github.com/nolindnaidoo/unicode-le/actions/workflows/ci-crate.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/nolindnaidoo/unicode-le/ci-crate.yml?branch=main&style=for-the-badge&label=CI&color=blue&logo=githubactions&logoColor=white" alt="CI" />
-  </a>
-  <a href="https://github.com/nolindnaidoo/unicode-le/blob/main/crate/Cargo.toml">
-    <img src="https://img.shields.io/badge/rustc-1.88+-blue?style=for-the-badge&logo=rust" alt="MSRV: Rust 1.88+" />
-  </a>
-  <a href="https://github.com/nolindnaidoo/unicode-le/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="MIT licensed" />
   </a>
   <a href="https://letools.dev/tools/unicode-le">
     <img src="https://img.shields.io/badge/LE%20Tools-letools.dev-blue?style=for-the-badge" alt="LE Tools" />
@@ -30,263 +27,204 @@
 
 ---
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nolindnaidoo/unicode-le/main/assets/demo.gif" alt="Unicode-LE demo — the real binary, recorded by assets/demo.tape" style="max-width: 100%; height: auto;" />
-</p>
-
-> **Useful?** A star is how other developers find it —
+> **Useful?** A star or rating is how other developers find it —
 > [★ GitHub](https://github.com/nolindnaidoo/unicode-le) ·
-> [letools.dev/tools/unicode-le](https://letools.dev/tools/unicode-le)
+> [★ Open VSX](https://open-vsx.org/extension/OffensiveEdge/unicode-le/reviews) ·
+> [★ Marketplace](https://marketplace.visualstudio.com/items?itemName=nolindnaidoo.unicode-le&ssr=false#review-details)
 
-A right-to-left override that makes a reviewer read an `if` guard that is
-not there. A Cyrillic `а` in `pаypal`. A zero-width space between two
-strings that a hash says are different and a person says are the same. A
-no-break space where a `split(' ')` expects a space.
+## What it does
 
-One command over a whole tree. Nothing is rewritten, and **nothing it
-prints can render as anything** — findings carry `U+XXXX`, never the
-character, and even a file name or a key that holds a bidi control comes
-out as `\uXXXX`. A report that pasted one raw would reorder the
-terminal, the diff and the pull request of whoever read it. Because
-`\uXXXX` is JSON's own escape, a parser still decodes the path back to
-the file it opens.
+Open a file, press `Ctrl+Alt+G` (`Cmd+Alt+G` on Mac), and every character in it that is not what it looks like lands in a report beside the editor: the bidirectional controls behind CVE-2021-42574, zero-width and other invisibles, homoglyphs, words no single script accounts for, lines that are not in Normalization Form C, spaces that are not U+0020, and codepoints with no agreed meaning. **Scan Workspace** does the same for every file on disk. Works in VS Code and in VS Code–based editors like Cursor and VSCodium (installable from Open VSX).
 
-## Sixty seconds
+- **Review a pull request for Trojan Source** — a right-to-left override that makes the code a reviewer reads differ from the code that runs
+- **Screen for forged names** — a Cyrillic `а` in an otherwise Latin `pаypal` is a finding; a word written wholly in Cyrillic is not
+- **Explain the string that never matches** — a zero-width space or a decomposed `é` between two values a hash calls different and a person calls identical
 
-```
-$ unicode-le .
-./README.md:1:9  [low] unusual-whitespace U+00A0  no-break space: renders like a
-  space and is not one, so a trim, a split or a comparison against U+0020 does
-  not see it
-./src/auth.ts:1:7  [high] mixed-script U+0430  one word written in Cyrillic and
-  Latin: no single script accounts for it, which is how a name that reads as
-  familiar is forged
-./src/auth.ts:1:8  [high] confusable U+0430  a Cyrillic character in a word that
-  is not Cyrillic, and it reduces to the codepoint under `resembles`: the two
-  are indistinguishable on screen
-./src/render.ts:1:16  [high] bidi-control U+202E  right-to-left override: a
-  bidirectional control reorders how the rest of the line renders, so the text
-  a reviewer reads is not the text that runs
-4 findings in 4 files
-```
-
-(Long lines wrapped here for the page; the tool writes one line per
-finding. The file order is the walk's, which is sorted, so two runs over
-an unchanged tree produce the same bytes.)
-
-stdout is one JSON document; stderr is what you see above.
-
-```bash
-
-# in CI, for the CVE and nothing else:
-unicode-le --fail-on bidi .
-```
+**The report never contains a character it found.** Every finding is written as `U+202E`, never as the character itself, and a file path or key path from the document is escaped to `‮`. A report that pasted one raw would reorder the screen of whoever read it, and the tool would become the delivery mechanism for the thing it detects. **It rewrites nothing**: not a normalization, not a stripped space.
 
 ## Install
 
-```bash
-cargo install unicode-le
-```
-
-Or build it from source:
-
-```bash
-git clone https://github.com/nolindnaidoo/unicode-le
-cd unicode-le/crate
-cargo build --release
-./target/release/unicode-le --help
-```
-
-## It runs on internationalised code without drowning you
-
-This is the part that decides whether the tool survives contact with a
-real repository. A naive confusable check flags every letter of every
-Russian and Chinese string in your tree — thousands of findings on
-exactly the codebases that most need the check, so it gets switched off,
-and the Trojan Source screen goes off with it.
-
-**A word is judged, never a file.** `Привет` is wholly Cyrillic and is
-Russian. The Cyrillic `а` in `pаypal` sits in a word that is otherwise
-Latin, and only that one is a finding. Japanese mixes Han, Hiragana and
-Katakana in one word constantly, and UTS #39 knows that is Japanese.
-
-**A file plainly written in another script is refused, not guessed at.**
-Your `zh-CN.json` gets a refusal saying the confusable check did not run
-on it and why — not four hundred findings. Every other check still did.
-
-**Naming the script judges it properly.** `--script Han` says Han is
-expected here, so a Latin product name inside a Chinese string is a
-translation rather than a finding — while a Cyrillic letter in a Latin
-word *in that same file* is still caught. Declaring is how you turn the
-check on, never how you turn it off.
-
-Reproduce it against the three translation fixtures the crate ships —
-Chinese, Russian and Japanese:
-
-```bash
-unicode-le fixtures/documents/{zh-cn,ru,ja}.json
-unicode-le --script Han,Hiragana,Katakana,Cyrillic fixtures/documents/{zh-cn,ru,ja}.json
-```
-
-| | findings | refusals |
+| Where | What you get | Install |
 |---|---|---|
-| no script declared | **0** | 3 — `intentional_script_context`, naming the share it measured |
-| `--script Han,Hiragana,Katakana,Cyrillic` | **0** | **0** — every check ran |
+| **VS Code** | The screen, in your editor, on a keystroke | [Marketplace](https://marketplace.visualstudio.com/items?itemName=nolindnaidoo.unicode-le) |
+| **Cursor, VSCodium, Windsurf** | The same extension | [Open VSX](https://open-vsx.org/extension/OffensiveEdge/unicode-le) |
+| **A terminal or a CI step** | The same screen over a whole tree, with exit codes | `cargo install unicode-le` · [crates.io](https://crates.io/crates/unicode-le) |
+| **Any MCP agent, via Node** | `detect_unicode_risks` over stdio | `npx unicode-le-mcp` · [npm](https://www.npmjs.com/package/unicode-le-mcp) |
+| **Zed** | The MCP server as a context server | [add it by hand](https://zed.dev/docs/ai/mcp) *(no listing yet)* |
 
-Both numbers matter. The second says the checks *ran* and found nothing.
+## Use it from an AI agent
 
-## It says where in the document, not just where in the file
+The same engine runs as an [MCP](https://modelcontextprotocol.io) server, so an agent can call it directly instead of you running a command. It matters more here than for most tools: a model that pasted a document into its own reasoning has already been handed the bidi controls in it, and what comes back from this server is `U+XXXX` and English, so the answer cannot carry them on into a commit message or a review comment.
+
+| Editor | How |
+|---|---|
+| **VS Code** 1.101+ | Nothing to install — the extension registers `detect_unicode_risks` with agent mode |
+| **Zed** | No listing yet — [add the MCP server by hand](https://zed.dev/docs/ai/mcp) |
+| **Claude Code** | `claude mcp add unicode-le -- npx -y unicode-le-mcp` |
+| **Cursor, Windsurf, anything else** | point it at `npx unicode-le-mcp` |
 
 ```
-$ unicode-le locales/
-locales/en.json:412:19  [high] bidi-control U+202E  at metrics.headline.eyebrow
-  right-to-left override: a bidirectional control reorders how the rest of the
-  line renders, so the text a reviewer reads is not the text that runs
+detect_unicode_risks(content, kinds?, scripts?, format?, filename?, maxResults?)
 ```
 
-A line number in a five-thousand-line catalogue is something you have to
-go and look up. `metrics.headline.eyebrow` is the thing you were looking
-for.
+Returns each finding with its kind, severity, 1-based line and column (UTF-16, as an editor counts), byte offset, the codepoints, the script and, where the format allows, the key path it sits under — plus any refusal, both structured and as a warning, so an empty finding list is never mistaken for a clean document. Every non-ASCII character in a reply leaves as `\uXXXX`. Capped at 500 by default with `meta.truncated`.
 
-| format | from | key path |
-|---|---|---|
-| JSON | `.json`, `.jsonc` | `metrics.headline.eyebrow`, `rows.[2].id` |
-| YAML | `.yaml`, `.yml` | `service.display.label` |
-| TOML | `.toml` | `server.limits.note` |
-| INI | `.ini`, `.cfg`, `.conf`, `.properties` | `database.host` |
-| dotenv | `.env` | `API_HOST` |
-| CSV | `.csv`, `.tsv` | the column's header name |
-| anything else | — | no key, same findings |
+The server takes content and returns data — it reads no files and makes no network requests of its own. Published as [`unicode-le-mcp`](https://www.npmjs.com/package/unicode-le-mcp) on npm and as `io.github.nolindnaidoo/unicode-le` in the [MCP registry](https://registry.modelcontextprotocol.io). It answers exactly as the Rust CLI's server does: one corpus runs against both, a differential test feeds both thousands of generated documents, and both read the same Unicode tables — written out by the crate — rather than whatever version the host's JavaScript engine carries.
 
-**The format never decides whether a finding exists**, only how it is
-addressed — the opposite of what a format-aware extractor does. A file
-whose format cannot be parsed is still scanned and still reports
-everything in it; a truncated document still yields the key paths it did
-manage to read. A test runs one document through every reader and
-asserts the findings come back identical each time.
+<details>
+<summary><b>Configuring it by hand</b> — any host with an MCP config file</summary>
 
-One thing the format does decide: inside a JSON string, `\n` is an
-escape and not the letter `n`, so `"Hello\nПривет"` is no longer
-reported as a word that mixes scripts. In a `.txt` file it still is,
-because there a backslash is an ordinary character and `C:\Привет` is a
-path.
+```json
+{
+  "mcpServers": {
+    "unicode-le": {
+      "command": "npx",
+      "args": ["-y", "unicode-le-mcp"]
+    }
+  }
+}
+```
 
-## It never rewrites your files
+Or install it once with `npm install -g unicode-le-mcp` and point at `unicode-le-mcp`. It needs no environment variables, no API key and no configuration of its own. To check it:
 
-No `--fix`. No normalization. No stripping. The form your text is in is
-**reported**; what to do about it is a decision with context this tool
-does not have — your NFD fixture may be NFD on purpose, and a test that
-pins a decomposed sequence breaks the moment something helpfully
-composes it.
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | npx -y unicode-le-mcp
+```
 
-It also cannot prove text safe. A confusable pair added after Unicode
-16.0 is not in the tables it stands on. Silence is not a clearance.
+</details>
 
 ## What it finds
 
-| kind | severity | what |
+| Kind | Severity | What |
 |---|---|---|
-| `bidi-control` | high | The Trojan Source class, [CVE-2021-42574](https://trojansource.codes/). U+202A–U+202E, U+2066–U+2069, U+061C. |
-| `confusable` | high | A homoglyph: Cyrillic `а` for `a`, Greek `ο` for `o`, full-width `Ｆ`, mathematical `𝐚`. Reports what it resembles. |
-| `mixed-script` | high | One word that no single script accounts for, under UTS #39's resolved script set. |
-| `invisible` | medium | Zero-width space, joiner and non-joiner, word joiner, soft hyphen, an interior BOM, the Mongolian vowel separator. |
-| `unassigned-or-private-use` | medium | Private-use, unassigned, noncharacter. |
-| `non-nfc` | low | A line that is not in Normalization Form C, with the form it is in. |
-| `unusual-whitespace` | low | No-break space, ideographic space, and the rest of the spaces that are not the space. |
+| `bidi-control` | high | U+202A–U+202E, U+2066–U+2069, U+061C — the Trojan Source class. They reorder how the rest of the line renders. |
+| `confusable` | high | A homoglyph in a word of another script, or a compatibility form of an ASCII character (full-width `Ｆ`, mathematical `𝐚`, the Kelvin sign), with the codepoint it resembles |
+| `mixed-script` | high | One word that no single script accounts for |
+| `invisible` | medium | Zero-width characters, the soft hyphen, and U+FEFF anywhere but the first byte |
+| `unassigned-or-private-use` | medium | A codepoint with no assigned meaning: private use, unassigned, a noncharacter |
+| `non-nfc` | low | A line that is not in Normalization Form C. Reported, never rewritten |
+| `unusual-whitespace` | low | A space that is not U+0020: no-break, ideographic, the en and em spaces |
 
-Severity does not rank `bidi-control` above the other two highs — three
-levels cannot say "this one is the CVE". `--fail-on bidi` does.
+## It runs on translated code without drowning you
 
-Every finding carries a file, a 1-based line and **UTF-16 column** (what
-your editor's ruler shows), a byte offset, the codepoints as `U+XXXX`,
-the scripts involved and a severity. Confusables also carry `resembles`,
-and a finding in a document whose format is readable carries `key`.
+A naive confusable check flags every letter of every Russian and Chinese string in a workspace — thousands of findings on exactly the codebases that most need the check, so it gets switched off, and the Trojan Source screen goes off with it.
+
+- **A word is judged, never a file.** `Привет` is wholly Cyrillic and is Russian. Japanese mixes Han, Hiragana and Katakana in one word constantly, and UTS #39 knows that is Japanese.
+- **A file plainly written in another script is not judged for homoglyphs**, and the report says so — at least 10% of its letters in a script nobody declared. Every other check still runs on it.
+- **Declaring a script turns the check on, never off.** Name your workspace's scripts in `unicode-le.detection.scripts` — `Han`, `Cyrillic`, `Hira` — and a Latin product name inside a Chinese string is a translation, while a Cyrillic letter in a Latin word in the same file is still caught.
+
+## It says where in the document, not just where in the file
+
+In JSON, YAML, TOML, INI and `.properties`, `.env`, CSV and TSV a finding also carries the key path it sits under — `metrics.headline.eyebrow` rather than line 412 of a five-thousand-line catalogue. **The format never decides whether a finding exists**, only how it is addressed: a file whose format cannot be parsed is still scanned and still reports everything in it.
 
 ## It refuses rather than guessing
 
-A refusal is a first-class result, not an error: the run carries on, and
-nothing is reported clean that was never looked at.
+The workspace scan reads every file as bytes. A UTF-16 or UTF-32 file, a binary file and a file that is not valid UTF-8 are **refused by name** rather than decoded as something else, because a wrong decode invents findings: read UTF-16 as UTF-8 and every second byte becomes an invisible character that is not in the file.
 
-| reason | when | what still ran |
-|---|---|---|
-| `binary_or_undecodable` | a NUL byte in the first 8 KB, bytes that are not UTF-8, or a file it could not read | nothing |
-| `encoding_unknown` | a UTF-16 or UTF-32 byte-order mark | nothing |
-| `intentional_script_context` | at least 10% of the letters belong to an **undeclared** non-Latin script | everything except the confusable and mixed-script checks |
+## The CLI
 
-**No encoding is ever guessed.** Read a UTF-16 file as UTF-8 and every
-second byte looks like a NUL: a tool that guessed would report a file
-full of invisible and unassigned characters that are not in it. A
-confident, detailed, fabricated answer is the worst thing a security
-screen can produce.
+The same screen runs from a terminal or a CI step: a Rust CLI in [`crate/`](crate/README.md), sharing one corpus with the extension — [`crate/fixtures/`](crate/fixtures/) — so the two can never read a document differently.
 
-`summary.unexamined` counts the files where **nothing** was read, which
-is a different number from `summary.refusals` — a file refused for its
-script context was still screened for bidi controls and invisibles.
-
-Refusals do not fail the run. `--strict` makes them exit 2, for a
-pipeline that wants to insist the scan covered what it was pointed at.
-
-## Exit codes are the API
-
-- **0** — clean.
-- **1** — at least one finding that `--fail-on` counts.
-- **2** — the question was malformed: an unknown flag, an unknown kind or
-  script, a path that does not exist. Also `--strict` with any refusal.
-
-## Options
-
-```
-usage: unicode-le [options] <file|dir>...
-       unicode-le [options] --stdin
-       unicode-le mcp
-       unicode-le --version | --help
-
-  --kind <kind>     bidi, invisible, confusable, mixed-script, non-nfc,
-                    whitespace, unassigned (repeatable, comma-separated)
-  --script <tag>    a non-Latin script this tree is expected to contain,
-                    by Unicode name or ISO 15924 tag: Han, Cyrillic, Hani
-  --fail-on <what>  any (default) or bidi
-  --strict          exit 2 if any file was refused
-  --stdin           read one document from stdin
-  --hidden          walk hidden files and directories too
-  --no-ignore       walk files that .gitignore excludes
-```
-
-Every text file is walked — there is no format filter, because a bidi
-control is a bidi control in a `.md`, a `.json` and a file with no
-extension. A directory is walked the way ripgrep walks one; a file named
-explicitly is always read.
-
-## As an MCP server
+<p align="center">
+  <img src="assets/demo.gif" alt="unicode-le in a terminal" style="max-width: 100%; height: auto;" />
+</p>
 
 ```bash
-unicode-le mcp
+unicode-le .                          # every finding in the tree, as JSON on stdout
+unicode-le --fail-on bidi .           # in CI, for the CVE and nothing else
+unicode-le --script Han,Cyrillic src/ # a translated tree, judged rather than refused
+unicode-le mcp                        # the same screen over MCP on stdio
 ```
 
-Two tools over stdio:
+**Exit codes are the API** — 0 clean, 1 a finding `--fail-on` counts, 2 the question was malformed (or `--strict` with any refusal).
 
-- **`detect_unicode_risks`** — a document in, findings out. No
-  filesystem. Worth pointing at explicitly: a model that reads a file
-  itself has already swallowed the bidi controls in it. What comes back
-  from here is `U+XXXX` and English, so the answer cannot carry the
-  attack into a commit message or a review comment.
-- **`unicode_le_scan`** — files or directories in, the same report the
-  CLI writes.
+## Commands
 
-Both return `{ ok, data, diagnostics, meta }`, where `ok` means the check
-ran — never that the answer was yes. Refusals speak the caller's
-vocabulary: an MCP caller has no command line, so no message on that
-surface names a flag, and a test asserts none contains `--`.
+| Command | Description |
+|---|---|
+| `Unicode-LE: Detect Unicode Risks` (`Ctrl+Alt+G` / `Cmd+Alt+G`) | Screen the active document, as the editor holds it |
+| `Unicode-LE: Scan Workspace for Unicode Risks` | Screen every file matched by `workspace.scanPatterns`, read from disk as UTF-8 |
+| `Unicode-LE: Open Settings` | Open Unicode-LE settings |
+| `Unicode-LE: Help & Troubleshooting` | Built-in documentation |
+
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `unicode-le.detection.kinds` | `[]` | Report only these kinds; empty is every kind, the only setting under which an empty report means clean |
+| `unicode-le.detection.scripts` | `[]` | Non-Latin scripts your files are written in, by Unicode name or ISO 15924 tag |
+| `unicode-le.openResultsSideBySide` | `true` | Open the report beside the current editor |
+| `unicode-le.copyToClipboardEnabled` | `false` | Also copy the report to the clipboard |
+| `unicode-le.workspace.scanPatterns` | `["**/*"]` | Glob patterns of the files the workspace scan reads |
+| `unicode-le.workspace.scanExcludes` | `node_modules`, `.git`, `dist`, `build`, `target`, `*.min.js` | Glob patterns the workspace scan skips |
+| `unicode-le.workspace.scanMaxFiles` | `5000` | The most files one workspace scan reads |
+| `unicode-le.notificationsLevel` | `silent` | `all` = every notification, `important` = warnings + errors, `silent` = errors only |
+| `unicode-le.safety.enabled` | `true` | Guardrails for large files |
+| `unicode-le.safety.fileSizeWarnBytes` | `1000000` | Warn about a larger active document; leave larger workspace files unread |
+| `unicode-le.statusBar.enabled` | `true` | Show the status bar item |
+| `unicode-le.telemetryEnabled` | `false` | Local-only event log (see Privacy) |
+
+## Languages
+
+Twelve languages besides English:
+
+German · Spanish · French · Indonesian · Italian · Japanese · Korean ·
+Portuguese (Brazil) · Russian · Ukrainian · Vietnamese · Chinese (Simplified)
+
+Both halves are covered — the manifest (command titles, setting names and descriptions) and everything shown while the extension runs (notifications, the status bar and the report's headings). Each finding's detail is the engine's English, identical to the CLI's and the MCP server's.
+
+## Privacy & security
+
+- **No network access.** The extension never sends data anywhere. The `telemetryEnabled` setting only writes events to a local Output Channel you can inspect (`Unicode-LE`).
+- **The MCP server holds the same line.** It takes content as an argument and returns data: no filesystem access, no network calls, no telemetry. `check:mcp-bundle` fails the build if the server writes a non-ASCII character to stdout.
+- Error notifications redact home directories and credential-shaped fragments.
 
 ## Documentation
 
 | What | Where |
 |---|---|
 | What the tool is allowed to say — scope, output contract, refusals, non-goals | [`crate/SPEC.md`](crate/SPEC.md) |
-| How the code is written and held together — architecture, invariants, the gates | [`crate/AGENTS.md`](crate/AGENTS.md) |
-| The crate's own front page | [`crate/README.md`](crate/README.md) |
+| How the extension is built and held together — architecture, invariants, toolchain, release | [AGENTS.md](AGENTS.md) |
+| How the CLI is built and held together | [`crate/AGENTS.md`](crate/AGENTS.md) |
 | What changed | [CHANGELOG.md](CHANGELOG.md) · [`crate/CHANGELOG.md`](crate/CHANGELOG.md) |
 | The tool's page, and the other fifteen | [letools.dev/tools/unicode-le](https://letools.dev/tools/unicode-le) |
+
+## Performance
+
+<!-- performance:start -->
+| Input | Size | Found | Time | Rate | Scan speed |
+| --- | --- | --- | --- | --- | --- |
+| Source with hazards | 1.16 MB | 1,800 | 160.71 ms | 11,200/sec | 7.2 MB/s |
+| JSON catalogue | 1.46 MB | 20,000 | 195.09 ms | 102,518/sec | 7.5 MB/s |
+| Minified one-liner | 0.63 MB | 40,000 | 78.7 ms | 508,247/sec | 8 MB/s |
+
+Median of 7 runs after warmup, on Apple M5 Pro, 24 GB RAM, Node 24.3.0. Inputs are generated
+by `scripts/benchmark.ts` rather than checked in, so the sizes above are
+exactly what was measured. Reproduce with `bun run benchmark`.
+
+These are machine-specific and are not asserted in CI — a benchmark that gates
+a build only tells you how busy the runner was.
+<!-- performance:end -->
+
+## Testing
+
+<!-- coverage:start -->
+| Metric | Coverage |
+| --- | --- |
+| Statements | 86.94% |
+| Branches | 78.32% |
+| Functions | 94.55% |
+| Lines | 88.79% |
+
+114 test cases across 11 files, plus an integration suite that runs
+in a real VS Code extension host and an end-to-end test that installs the
+built `.vsix` into a clean profile.
+
+Generated from a real run — `coverage/coverage-summary.json` and
+`coverage/test-results.json` — by `scripts/coverage-readme.js`; CI fails if
+this section drifts. Reproduce with `bun run test:coverage`, and the case
+count is the one vitest prints.
+<!-- coverage:end -->
 
 ## More from the LE family
 
@@ -336,4 +274,4 @@ part of the LE family.
 
 ## License
 
-MIT © [nolindnaidoo](https://github.com/nolindnaidoo) — see [LICENSE](LICENSE).
+MIT © [nolindnaidoo](https://github.com/nolindnaidoo)
