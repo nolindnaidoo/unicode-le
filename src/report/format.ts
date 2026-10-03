@@ -48,39 +48,45 @@ export function formatReport(
 
 	for (const report of reports) {
 		if (report.findings.length === 0 && report.refusals.length === 0) continue;
-		lines.push(`## ${cell(report.file)}`, '');
-		if (report.findings.length > 0) {
-			lines.push(
-				`| ${vscode.l10n.t('Line')} | ${vscode.l10n.t('Column')} | ${vscode.l10n.t('Kind')} | ${vscode.l10n.t('Severity')} | ${vscode.l10n.t('Codepoints')} | ${vscode.l10n.t('Key')} | ${vscode.l10n.t('Detail')} |`,
-				'|---:|---:|---|---|---|---|---|',
-			);
-			for (const finding of report.findings) lines.push(row(finding));
-			lines.push('');
-		}
+		lines.push(`## ${code(report.file)}`, '');
+		for (const finding of report.findings) lines.push(...item(finding));
 		for (const refusal of report.refusals) {
 			lines.push(
-				`- **${vscode.l10n.t('Not judged')}** (\`${refusal.reason}\`): ${cell(refusal.detail)}`,
+				`- **${vscode.l10n.t('Not judged')}** (\`${refusal.reason}\`): ${escapeNonAscii(refusal.detail)}`,
+				'',
 			);
 		}
-		if (report.refusals.length > 0) lines.push('');
 	}
 	return `${lines.join('\n')}\n`;
 }
 
-function row(finding: Finding): string {
+/**
+ * One finding as a list item: where, what and how bad on the first line, the
+ * detail as its own paragraph beneath it. A table was tried and read badly at any editor width — the
+ * detail crushed every other column into a tall strip.
+ */
+function item(finding: Finding): string[] {
 	const codepoints = finding.resembles
 		? `${finding.codepoints.join(' ')} (${vscode.l10n.t('resembles {0}', finding.resembles.join(' '))})`
 		: finding.codepoints.join(' ');
-	return `| ${finding.line} | ${finding.column} | ${finding.kind} | ${finding.severity} | ${codepoints} | ${finding.key === undefined ? '' : `\`${cell(finding.key)}\``} | ${cell(finding.detail)} |`;
+	const key =
+		finding.key === undefined
+			? ''
+			: ` · ${vscode.l10n.t('Key')} ${code(finding.key)}`;
+	return [
+		`- **${finding.line}:${finding.column}** · ${finding.kind} · ${finding.severity} · ${codepoints}${key}`,
+		'',
+		`  ${escapeNonAscii(finding.detail)}`,
+		'',
+	];
 }
 
 /**
- * Escaped for the report and safe inside a Markdown table cell. A backslash is
- * doubled first, so a pipe after it cannot leave the cell — and a file actually
- * named `\u202E` reads `\\u202E`, never like the character it is not.
+ * Text the scan did not write — a path or a key path — as a code span.
+ * Backslashes are doubled before non-ASCII is escaped, JSON's way, so a file
+ * actually named `\u202E` reads `\\u202E` and never like the character it is
+ * not. A code span cannot escape a backtick, so one becomes a quote.
  */
-function cell(text: string): string {
-	return escapeNonAscii(text.replace(/[\\|]/g, (character) => `\\${character}`))
-		.replace(/`/g, "'")
-		.replace(/\r?\n/g, ' ');
+function code(text: string): string {
+	return `\`${escapeNonAscii(text.replace(/\\/g, '\\\\')).replace(/`/g, "'").replace(/\r?\n/g, ' ')}\``;
 }
