@@ -6,6 +6,8 @@ mod scan;
 mod walk;
 
 #[cfg(test)]
+mod tables;
+#[cfg(test)]
 mod testing;
 
 fn main() -> std::process::ExitCode {

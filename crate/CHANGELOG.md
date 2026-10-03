@@ -5,6 +5,18 @@ The Rust CLI and MCP server.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`fixtures/unicode-tables.json`**: the Unicode data the VS Code extension
+  answers from — scripts and script extensions, letters, digits, whitespace,
+  combining classes, canonical decompositions and compositions, homoglyph
+  prototypes and ASCII lookalikes — rendered from this crate's own
+  dependencies and toolchain. `the_shared_unicode_tables_are_this_crates`
+  fails when the file and the crate disagree, so a dependency bump that moves
+  one character moves the extension with it. Behaviour is unchanged.
+
 ## [0.2.1] - 2026-08-15
 
 ### Fixed
