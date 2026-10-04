@@ -1,6 +1,6 @@
 {
 	"name": "unicode-le-mcp",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"mcpName": "io.github.nolindnaidoo/unicode-le",
 	"description": "Find the Unicode that hides meaning: bidi controls, invisibles, homoglyphs and mixed scripts.",
 	"keywords": [

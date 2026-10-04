@@ -1,7 +1,7 @@
 id = "unicode-le"
 name = "Unicode-LE"
 description = "Find the Unicode that hides meaning: bidi controls, invisibles, homoglyphs and mixed scripts."
-version = "1.0.0"
+version = "1.0.1"
 schema_version = 1
 authors = ["nolindnaidoo"]
 repository = "https://github.com/nolindnaidoo/unicode-le"
