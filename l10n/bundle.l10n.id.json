@@ -1,5 +1,9 @@
 {
 	"Characters are written as U+XXXX and never as themselves: a report that pasted one would carry it into whatever renders this.": "Karakter ditulis sebagai U+XXXX dan tidak pernah sebagai dirinya sendiri: laporan yang menempelkannya akan membawanya ke apa pun yang menampilkan laporan ini.",
+	"Enjoying {0}? A rating helps other developers find it.": "Suka dengan {0}? Penilaian membantu pengembang lain menemukannya.",
+	"Rate": "Beri Nilai",
+	"Later": "Nanti",
+	"Don't Ask Again": "Jangan Tanya Lagi",
 	"Could not copy to clipboard": "Tidak dapat menyalin ke papan klip",
 	"Could not open results": "Tidak dapat membuka hasil",
 	"File is empty": "Berkas ini kosong",

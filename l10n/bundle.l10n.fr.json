@@ -1,5 +1,9 @@
 {
 	"Characters are written as U+XXXX and never as themselves: a report that pasted one would carry it into whatever renders this.": "Les caractères sont écrits sous la forme U+XXXX et jamais tels quels : un rapport qui en collerait un le transmettrait à tout ce qui affiche ce rapport.",
+	"Enjoying {0}? A rating helps other developers find it.": "Vous appréciez {0} ? Une note aide d’autres développeurs à le trouver.",
+	"Rate": "Noter",
+	"Later": "Plus tard",
+	"Don't Ask Again": "Ne plus demander",
 	"Could not copy to clipboard": "Impossible de copier dans le presse-papiers",
 	"Could not open results": "Impossible d'ouvrir les résultats",
 	"File is empty": "Le fichier est vide",

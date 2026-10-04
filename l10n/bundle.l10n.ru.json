@@ -1,5 +1,9 @@
 {
 	"Characters are written as U+XXXX and never as themselves: a report that pasted one would carry it into whatever renders this.": "Символы записываются как U+XXXX и никогда как они сами: отчёт, вставивший такой символ, перенёс бы его во всё, что отображает этот отчёт.",
+	"Enjoying {0}? A rating helps other developers find it.": "Нравится {0}? Оценка помогает другим разработчикам найти это расширение.",
+	"Rate": "Оценить",
+	"Later": "Позже",
+	"Don't Ask Again": "Больше не спрашивать",
 	"Could not copy to clipboard": "Не удалось скопировать в буфер обмена",
 	"Could not open results": "Не удалось открыть результаты",
 	"File is empty": "Файл пуст",

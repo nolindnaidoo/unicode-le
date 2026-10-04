@@ -1,5 +1,9 @@
 {
 	"Characters are written as U+XXXX and never as themselves: a report that pasted one would carry it into whatever renders this.": "문자는 U+XXXX 형식으로 표기되며 문자 자체로는 표시되지 않습니다. 보고서에 그 문자를 붙여 넣으면 이 보고서를 표시하는 모든 곳으로 문자가 옮겨지기 때문입니다.",
+	"Enjoying {0}? A rating helps other developers find it.": "{0}이(가) 마음에 드시나요? 평점을 남기면 다른 개발자가 찾는 데 도움이 됩니다.",
+	"Rate": "평가하기",
+	"Later": "나중에",
+	"Don't Ask Again": "다시 묻지 않기",
 	"Could not copy to clipboard": "클립보드에 복사할 수 없습니다.",
 	"Could not open results": "결과를 열 수 없습니다",
 	"File is empty": "파일이 비어 있습니다.",
