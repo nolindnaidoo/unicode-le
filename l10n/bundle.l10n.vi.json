@@ -1,5 +1,9 @@
 {
 	"Characters are written as U+XXXX and never as themselves: a report that pasted one would carry it into whatever renders this.": "Ký tự được viết dưới dạng U+XXXX và không bao giờ ở dạng chính nó: một báo cáo dán ký tự đó vào sẽ mang nó tới bất cứ thứ gì hiển thị báo cáo này.",
+	"Enjoying {0}? A rating helps other developers find it.": "Bạn thích {0}? Một lượt đánh giá giúp các nhà phát triển khác tìm thấy tiện ích này.",
+	"Rate": "Đánh giá",
+	"Later": "Để sau",
+	"Don't Ask Again": "Không hỏi lại",
 	"Could not copy to clipboard": "Không thể sao chép vào khay nhớ tạm",
 	"Could not open results": "Không thể mở kết quả",
 	"File is empty": "Tệp trống",

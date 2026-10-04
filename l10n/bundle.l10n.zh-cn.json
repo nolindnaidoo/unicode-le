@@ -1,5 +1,9 @@
 {
 	"Characters are written as U+XXXX and never as themselves: a report that pasted one would carry it into whatever renders this.": "字符以 U+XXXX 的形式书写，从不以其本身出现：如果报告粘贴了该字符，就会把它带入显示此报告的任何地方。",
+	"Enjoying {0}? A rating helps other developers find it.": "喜欢 {0} 吗？评分可以帮助其他开发者发现它。",
+	"Rate": "评分",
+	"Later": "稍后",
+	"Don't Ask Again": "不再询问",
 	"Could not copy to clipboard": "无法复制到剪贴板",
 	"Could not open results": "无法打开结果",
 	"File is empty": "文件为空",
