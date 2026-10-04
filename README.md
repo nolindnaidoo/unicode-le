@@ -11,8 +11,8 @@
   <a href="https://marketplace.visualstudio.com/items?itemName=nolindnaidoo.unicode-le">
     <img src="https://img.shields.io/badge/Install%20from-VS%20Code-blue?style=for-the-badge&logo=visualstudiocode" alt="Install from VS Code Marketplace" />
   </a>
-  <a href="https://open-vsx.org/extension/OffensiveEdge/unicode-le">
-    <img src="https://img.shields.io/open-vsx/dt/OffensiveEdge/unicode-le?style=for-the-badge&label=Open%20VSX&color=blue" alt="Open VSX downloads" />
+  <a href="https://open-vsx.org/extension/nolindnaidoo/unicode-le">
+    <img src="https://img.shields.io/open-vsx/dt/nolindnaidoo/unicode-le?style=for-the-badge&label=Open%20VSX&color=blue" alt="Open VSX downloads" />
   </a>
   <a href="https://www.npmjs.com/package/unicode-le-mcp">
     <img src="https://img.shields.io/npm/v/unicode-le-mcp?style=for-the-badge&label=MCP%20server&color=blue&logo=npm" alt="unicode-le-mcp on npm" />
@@ -29,7 +29,7 @@
 
 > **Useful?** A star or rating is how other developers find it —
 > [★ GitHub](https://github.com/nolindnaidoo/unicode-le) ·
-> [★ Open VSX](https://open-vsx.org/extension/OffensiveEdge/unicode-le/reviews) ·
+> [★ Open VSX](https://open-vsx.org/extension/nolindnaidoo/unicode-le/reviews) ·
 > [★ Marketplace](https://marketplace.visualstudio.com/items?itemName=nolindnaidoo.unicode-le&ssr=false#review-details)
 
 ## What it does
@@ -47,7 +47,7 @@ Open a file, press `Ctrl+Alt+G` (`Cmd+Alt+G` on Mac), and every character in it 
 | Where | What you get | Install |
 |---|---|---|
 | **VS Code** | The screen, in your editor, on a keystroke | [Marketplace](https://marketplace.visualstudio.com/items?itemName=nolindnaidoo.unicode-le) |
-| **Cursor, VSCodium, Windsurf** | The same extension | [Open VSX](https://open-vsx.org/extension/OffensiveEdge/unicode-le) |
+| **Cursor, VSCodium, Windsurf** | The same extension | [Open VSX](https://open-vsx.org/extension/nolindnaidoo/unicode-le) |
 | **A terminal or a CI step** | The same screen over a whole tree, with exit codes | `cargo install unicode-le` · [crates.io](https://crates.io/crates/unicode-le) |
 | **Any MCP agent, via Node** | `detect_unicode_risks` over stdio | `npx unicode-le-mcp` · [npm](https://www.npmjs.com/package/unicode-le-mcp) |
 | **Zed** | The MCP server as a context server | [add it by hand](https://zed.dev/docs/ai/mcp) *(no listing yet)* |
