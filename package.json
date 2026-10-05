@@ -149,14 +149,6 @@
 				}
 			]
 		},
-		"keybindings": [
-			{
-				"command": "unicode-le.detect",
-				"key": "ctrl+alt+g",
-				"mac": "cmd+alt+g",
-				"when": "editorTextFocus"
-			}
-		],
 		"configuration": {
 			"title": "%manifest.settings.title%",
 			"properties": {

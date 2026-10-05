@@ -38,7 +38,7 @@ export function generateHelpContent(): string {
 		'',
 		'## Commands',
 		'',
-		'- **Detect Unicode Risks** (`Ctrl+Alt+G`, Mac `Cmd+Alt+G`): the active document, as the editor holds it.',
+		'- **Detect Unicode Risks**: the active document, as the editor holds it.',
 		'- **Scan Workspace for Unicode Risks**: every file matched by `unicode-le.workspace.scanPatterns`, read from disk as UTF-8.',
 		'- **Open Settings** and **Help & Troubleshooting**.',
 		'',
