@@ -30,6 +30,7 @@ describe('config defaults parity with package.json', () => {
 	const props = manifest.contributes.configuration.properties;
 
 	const KEY_MAP: Record<string, keyof typeof CONFIG_DEFAULTS> = {
+		'unicode-le.clipboardIncludesPositions': 'clipboardIncludesPositions',
 		'unicode-le.copyToClipboardEnabled': 'copyToClipboardEnabled',
 		'unicode-le.detection.kinds': 'detectionKinds',
 		'unicode-le.detection.scripts': 'detectionScripts',
@@ -37,6 +38,7 @@ describe('config defaults parity with package.json', () => {
 		'unicode-le.openResultsSideBySide': 'openResultsSideBySide',
 		'unicode-le.safety.enabled': 'safetyEnabled',
 		'unicode-le.safety.fileSizeWarnBytes': 'safetyFileSizeWarnBytes',
+		'unicode-le.showPositions': 'showPositions',
 		'unicode-le.statusBar.enabled': 'statusBarEnabled',
 		'unicode-le.telemetryEnabled': 'telemetryEnabled',
 		'unicode-le.workspace.scanExcludes': 'workspaceScanExcludes',

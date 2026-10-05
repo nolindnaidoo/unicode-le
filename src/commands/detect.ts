@@ -66,11 +66,15 @@ export async function detectInActiveDocument(
 	const file = document.isUntitled
 		? document.fileName
 		: vscode.workspace.asRelativePath(document.uri, false);
-	const report = formatReport(
-		[{ file, findings: examination.findings, refusals: examination.refusals }],
-		1,
+	const reports = [
+		{ file, findings: examination.findings, refusals: examination.refusals },
+	];
+	await showReport(
+		formatReport(reports, 1, config.showPositions),
+		config,
+		deps,
+		formatReport(reports, 1, config.clipboardIncludesPositions),
 	);
-	await showReport(report, config, deps);
 
 	deps.telemetry.event('detected', {
 		findings: String(examination.findings.length),
