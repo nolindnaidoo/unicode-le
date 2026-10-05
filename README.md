@@ -34,7 +34,7 @@
 
 ## What it does
 
-Open a file, press `Ctrl+Alt+G` (`Cmd+Alt+G` on Mac), and every character in it that is not what it looks like lands in a report beside the editor: the bidirectional controls behind CVE-2021-42574, zero-width and other invisibles, homoglyphs, words no single script accounts for, lines that are not in Normalization Form C, spaces that are not U+0020, and codepoints with no agreed meaning. **Scan Workspace** does the same for every file on disk. Works in VS Code and in VS Code–based editors like Cursor and VSCodium (installable from Open VSX).
+Open a file, run `Unicode-LE: Detect Unicode Risks`, and every character in it that is not what it looks like lands in a report beside the editor: the bidirectional controls behind CVE-2021-42574, zero-width and other invisibles, homoglyphs, words no single script accounts for, lines that are not in Normalization Form C, spaces that are not U+0020, and codepoints with no agreed meaning. **Scan Workspace** does the same for every file on disk. Works in VS Code and in VS Code–based editors like Cursor and VSCodium (installable from Open VSX).
 
 - **Review a pull request for Trojan Source** — a right-to-left override that makes the code a reviewer reads differ from the code that runs
 - **Screen for forged names** — a Cyrillic `а` in an otherwise Latin `pаypal` is a finding; a word written wholly in Cyrillic is not
@@ -140,10 +140,12 @@ unicode-le mcp                        # the same screen over MCP on stdio
 
 | Command | Description |
 |---|---|
-| `Unicode-LE: Detect Unicode Risks` (`Ctrl+Alt+G` / `Cmd+Alt+G`) | Screen the active document, as the editor holds it |
+| `Unicode-LE: Detect Unicode Risks` | Screen the active document, as the editor holds it |
 | `Unicode-LE: Scan Workspace for Unicode Risks` | Screen every file matched by `workspace.scanPatterns`, read from disk as UTF-8 |
 | `Unicode-LE: Open Settings` | Open Unicode-LE settings |
 | `Unicode-LE: Help & Troubleshooting` | Built-in documentation |
+
+No command is bound to a key by default. Give any of them one under **Keyboard Shortcuts** in the editor.
 
 ## Settings
 
