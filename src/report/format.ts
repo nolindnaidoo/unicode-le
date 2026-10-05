@@ -14,6 +14,8 @@ import { escapeNonAscii } from '../utils/escape';
 export function formatReport(
 	reports: readonly DocumentReport[],
 	filesScanned: number,
+	// Whether each finding leads with its line and column. On unless said otherwise.
+	positions = true,
 ): string {
 	const findings = reports.reduce(
 		(sum, report) => sum + report.findings.length,
@@ -49,7 +51,8 @@ export function formatReport(
 	for (const report of reports) {
 		if (report.findings.length === 0 && report.refusals.length === 0) continue;
 		lines.push(`## ${code(report.file)}`, '');
-		for (const finding of report.findings) lines.push(...item(finding));
+		for (const finding of report.findings)
+			lines.push(...item(finding, positions));
 		for (const refusal of report.refusals) {
 			lines.push(
 				`- **${vscode.l10n.t('Not judged')}** (\`${refusal.reason}\`): ${escapeNonAscii(refusal.detail)}`,
@@ -61,11 +64,11 @@ export function formatReport(
 }
 
 /**
- * One finding as a list item: where, what and how bad on the first line, the
+ * One finding as a list item: where, if asked for, then what and how bad on the first line, the
  * detail as its own paragraph beneath it. A table was tried and read badly at any editor width — the
  * detail crushed every other column into a tall strip.
  */
-function item(finding: Finding): string[] {
+function item(finding: Finding, positions: boolean): string[] {
 	const codepoints = finding.resembles
 		? `${finding.codepoints.join(' ')} (${vscode.l10n.t('resembles {0}', finding.resembles.join(' '))})`
 		: finding.codepoints.join(' ');
@@ -73,8 +76,9 @@ function item(finding: Finding): string[] {
 		finding.key === undefined
 			? ''
 			: ` · ${vscode.l10n.t('Key')} ${code(finding.key)}`;
+	const where = positions ? `**${finding.line}:${finding.column}** · ` : '';
 	return [
-		`- **${finding.line}:${finding.column}** · ${finding.kind} · ${finding.severity} · ${codepoints}${key}`,
+		`- ${where}${finding.kind} · ${finding.severity} · ${codepoints}${key}`,
 		'',
 		`  ${escapeNonAscii(finding.detail)}`,
 		'',

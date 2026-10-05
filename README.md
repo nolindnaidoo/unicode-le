@@ -154,7 +154,9 @@ No command is bound to a key by default. Give any of them one under **Keyboard S
 | `unicode-le.detection.kinds` | `[]` | Report only these kinds; empty is every kind, the only setting under which an empty report means clean |
 | `unicode-le.detection.scripts` | `[]` | Non-Latin scripts your files are written in, by Unicode name or ISO 15924 tag |
 | `unicode-le.openResultsSideBySide` | `true` | Open the report beside the current editor |
+| `unicode-le.showPositions` | `true` | Show the line and column of each finding |
 | `unicode-le.copyToClipboardEnabled` | `false` | Also copy the report to the clipboard |
+| `unicode-le.clipboardIncludesPositions` | `true` | Include the line and column in that copy |
 | `unicode-le.workspace.scanPatterns` | `["**/*"]` | Glob patterns of the files the workspace scan reads |
 | `unicode-le.workspace.scanExcludes` | `node_modules`, `.git`, `dist`, `build`, `target`, `*.min.js` | Glob patterns the workspace scan skips |
 | `unicode-le.workspace.scanMaxFiles` | `5000` | The most files one workspace scan reads |
@@ -211,12 +213,12 @@ a build only tells you how busy the runner was.
 <!-- coverage:start -->
 | Metric | Coverage |
 | --- | --- |
-| Statements | 86.92% |
-| Branches | 78.26% |
-| Functions | 94.58% |
-| Lines | 88.77% |
+| Statements | 86.94% |
+| Branches | 78.39% |
+| Functions | 94.60% |
+| Lines | 88.81% |
 
-117 test cases across 11 files, plus an integration suite that runs
+121 test cases across 11 files, plus an integration suite that runs
 in a real VS Code extension host and an end-to-end test that installs the
 built `.vsix` into a clean profile.
 

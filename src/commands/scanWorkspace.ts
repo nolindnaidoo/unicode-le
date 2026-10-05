@@ -72,12 +72,20 @@ export async function scanWorkspace(deps: CommandDependencies): Promise<void> {
 					reports.push(result);
 			}
 
-			const report = formatReport(reports, files.length - skipped);
-			const withSkips =
-				skipped > 0
-					? `${report}\n${vscode.l10n.t('{0} file(s) larger than the safety limit were not read.', skipped)}\n`
+			const withSkips = (positions: boolean): string => {
+				const report = formatReport(reports, files.length - skipped, positions);
+				return skipped > 0
+					? `${report}
+${vscode.l10n.t('{0} file(s) larger than the safety limit were not read.', skipped)}
+`
 					: report;
-			await showReport(withSkips, config, deps);
+			};
+			await showReport(
+				withSkips(config.showPositions),
+				config,
+				deps,
+				withSkips(config.clipboardIncludesPositions),
+			);
 
 			const findings = reports.reduce(
 				(sum, entry) => sum + entry.findings.length,

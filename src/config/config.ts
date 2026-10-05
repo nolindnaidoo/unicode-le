@@ -12,6 +12,7 @@ import {
  * drifting apart.
  */
 export const CONFIG_DEFAULTS = Object.freeze({
+	clipboardIncludesPositions: true,
 	copyToClipboardEnabled: false,
 	detectionKinds: Object.freeze([] as KindFilter[]),
 	detectionScripts: Object.freeze([] as string[]),
@@ -19,6 +20,7 @@ export const CONFIG_DEFAULTS = Object.freeze({
 	openResultsSideBySide: true,
 	safetyEnabled: true,
 	safetyFileSizeWarnBytes: 1_000_000,
+	showPositions: true,
 	statusBarEnabled: true,
 	telemetryEnabled: false,
 	workspaceScanExcludes: Object.freeze([
@@ -36,6 +38,11 @@ export const CONFIG_DEFAULTS = Object.freeze({
 export function readConfig(): Configuration {
 	const config = vscode.workspace.getConfiguration('unicode-le');
 	return Object.freeze({
+		clipboardIncludesPositions: readBoolean(
+			config,
+			'clipboardIncludesPositions',
+			CONFIG_DEFAULTS.clipboardIncludesPositions,
+		),
 		copyToClipboardEnabled: readBoolean(
 			config,
 			'copyToClipboardEnabled',
@@ -71,6 +78,11 @@ export function readConfig(): Configuration {
 			'safety.fileSizeWarnBytes',
 			CONFIG_DEFAULTS.safetyFileSizeWarnBytes,
 			1000,
+		),
+		showPositions: readBoolean(
+			config,
+			'showPositions',
+			CONFIG_DEFAULTS.showPositions,
 		),
 		statusBarEnabled: readBoolean(
 			config,

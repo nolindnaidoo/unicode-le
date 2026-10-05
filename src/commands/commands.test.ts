@@ -91,6 +91,24 @@ describe('unicode-le.detect', () => {
 		expect(_clipboardText()).toContain('U+200B');
 	});
 
+	it('shows no positions when the setting is off, and still names the codepoint', async () => {
+		_setConfig('unicode-le.showPositions', false);
+		_setActiveEditor(_createDocument({ content: 'a​b' }));
+		await runCommand('unicode-le.detect');
+		expect(report()).not.toMatch(/\*\*\d+:\d+\*\*/);
+		expect(report()).toContain('U+200B');
+	});
+
+	it('decides positions for the clipboard separately from the report', async () => {
+		_setConfig('unicode-le.copyToClipboardEnabled', true);
+		_setConfig('unicode-le.clipboardIncludesPositions', false);
+		_setActiveEditor(_createDocument({ content: 'a​b' }));
+		await runCommand('unicode-le.detect');
+		expect(report()).toMatch(/\*\*\d+:\d+\*\*/);
+		expect(_clipboardText()).not.toMatch(/\*\*\d+:\d+\*\*/);
+		expect(_clipboardText()).toContain('U+200B');
+	});
+
 	it('runs only the kinds the settings name', async () => {
 		_setConfig('unicode-le.detection.kinds', ['bidi']);
 		_setActiveEditor(_createDocument({ content: 'a​b ‮' }));
