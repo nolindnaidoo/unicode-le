@@ -12,12 +12,20 @@
 	"Not judged": "판정 안 됨",
 	"Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.": "아무것도 찾지 못했습니다. 아무것도 없다는 것이 안전을 보증하지는 않습니다. 표를 만든 뒤에 추가된 혼동하기 쉬운 문자는 표시되지 않습니다.",
 	"Run Unicode-LE: Detect Unicode Risks": "Unicode-LE 실행: Unicode 위험 감지",
-	"Scanning the workspace for Unicode risks...": "작업 영역에서 Unicode 위험을 검사하는 중...",
 	"Unicode-LE report": "Unicode-LE 보고서",
 	"Unicode-LE settings: {0}": "Unicode-LE 설정: {0}",
 	"resembles {0}": "{0}과(와) 유사",
 	"{0} file(s) larger than the safety limit were not read.": "안전 한도를 넘는 파일 {0}개는 읽지 않았습니다.",
 	"{0} finding(s)": "결과 {0}개",
 	"{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.": "검사한 파일 {1}개에서 결과 {0}개, 파일 {2}개는 완전히 판정되지 않았습니다.",
-	"{0} of {1} files": "{0}/{1}개 파일"
+	"{0} of {1} files": "{0}/{1}개 파일",
+	"Scanning files...": "파일을 검사하는 중...",
+	"Scan Folder": "폴더 검사",
+	"More files matched than the limit of {0}. The rest were not read.": "제한인 {0}개보다 많은 파일이 일치했습니다. 나머지는 읽지 않았습니다.",
+	"The results limit was reached. The rest of the files were not read.": "결과 제한에 도달했습니다. 나머지 파일은 읽지 않았습니다.",
+	"{0} file(s) that are not UTF-8 text were not read.": "UTF-8 텍스트가 아닌 파일 {0}개는 읽지 않았습니다.",
+	"dependency folders, build output, caches and lockfiles": "종속성 폴더, 빌드 출력, 캐시, 잠금 파일",
+	"images, fonts, archives and other binary files": "이미지, 글꼴, 압축 파일 및 기타 이진 파일",
+	"{0} file(s) ignored by .gitignore": ".gitignore가 무시한 파일 {0}개",
+	"Not read: {0}. The {1} settings change this.": "읽지 않음: {0}. {1} 설정에서 변경할 수 있습니다."
 }

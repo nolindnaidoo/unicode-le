@@ -2,6 +2,7 @@
 	"manifest.command.category": "Unicode-LE",
 	"manifest.command.detect.title": "检测 Unicode 风险",
 	"manifest.command.scan-workspace.title": "扫描工作区中的 Unicode 风险",
+	"manifest.command.scan-folder.title": "扫描文件夹中的 Unicode 风险",
 	"manifest.command.settings.title": "打开设置",
 	"manifest.command.help.title": "帮助与故障排除",
 	"manifest.settings.title": "Unicode-LE 设置",
@@ -26,9 +27,15 @@
 	"manifest.settings.show.positions.desc": "显示每个结果的行号和列号",
 	"manifest.settings.statusbar.enabled.desc": "在状态栏显示 Unicode-LE 条目，便于快速访问",
 	"manifest.settings.telemetry.desc": "在输出窗格启用本地遥测日志",
-	"manifest.settings.workspace.excludes.desc": "工作区扫描跳过的文件的 glob 模式",
-	"manifest.settings.workspace.max-files.desc": "单次工作区扫描读取的最大文件数",
-	"manifest.settings.workspace.patterns.desc": "工作区扫描读取的文件的 glob 模式",
+	"manifest.settings.workspace.excludes.desc": "文件夹或工作区扫描在内置列表之外额外跳过的文件的 glob 模式。示例：**/fixtures/**",
+	"manifest.settings.workspace.max-files.desc": "一次文件夹或工作区扫描最多读取的文件数",
+	"manifest.settings.workspace.patterns.desc": "文件夹或工作区扫描要读取的文件的 glob 模式",
 	"manifest.capability.untrusted-workspaces.desc": "不受信任工作区功能受限",
-	"manifest.mcp.label": "用于代理模式的 Unicode-LE Unicode 风险检测"
+	"manifest.mcp.label": "用于代理模式的 Unicode-LE Unicode 风险检测",
+	"manifest.settings.workspace.max-results.desc": "一次文件夹或工作区扫描在停止读取前最多报告的结果数",
+	"manifest.settings.workspace.gitignore.desc": "跳过项目的 .gitignore 文件所忽略的文件",
+	"manifest.settings.workspace.always-include.desc": "即使内置列表或 .gitignore 会跳过，文件夹或工作区扫描仍会读取的文件的 glob 模式。示例：**/vendor/**",
+	"manifest.settings.workspace.binary.desc": "跳过图像、字体、压缩包等非文本文件",
+	"manifest.settings.workspace.default-excludes.desc": "跳过依赖文件夹、构建输出、缓存和锁文件，例如 node_modules、dist、.next 和 package-lock.json",
+	"manifest.settings.workspace.problems.desc": "同时在“问题”面板中显示文件夹或工作区扫描的发现"
 }

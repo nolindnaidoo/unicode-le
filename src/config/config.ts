@@ -23,16 +23,15 @@ export const CONFIG_DEFAULTS = Object.freeze({
 	showPositions: true,
 	statusBarEnabled: true,
 	telemetryEnabled: false,
-	workspaceScanExcludes: Object.freeze([
-		'**/node_modules/**',
-		'**/.git/**',
-		'**/dist/**',
-		'**/build/**',
-		'**/target/**',
-		'**/*.min.js',
-	]),
+	workspaceScanAlwaysInclude: Object.freeze([]) as readonly string[],
+	workspaceScanExcludes: Object.freeze([]) as readonly string[],
 	workspaceScanMaxFiles: 5000,
+	workspaceScanMaxResults: 10000,
 	workspaceScanPatterns: Object.freeze(['**/*']),
+	workspaceScanProblemsEnabled: false,
+	workspaceScanRespectGitignore: true,
+	workspaceScanSkipBinaryFiles: true,
+	workspaceScanUseDefaultExcludes: true,
 });
 
 export function readConfig(): Configuration {
@@ -93,6 +92,39 @@ export function readConfig(): Configuration {
 			config,
 			'telemetryEnabled',
 			CONFIG_DEFAULTS.telemetryEnabled,
+		),
+		workspaceScanAlwaysInclude: Object.freeze(
+			readStrings(
+				config,
+				'workspace.scanAlwaysInclude',
+				CONFIG_DEFAULTS.workspaceScanAlwaysInclude,
+			),
+		),
+		workspaceScanMaxResults: readNumber(
+			config,
+			'workspace.scanMaxResults',
+			CONFIG_DEFAULTS.workspaceScanMaxResults,
+			1,
+		),
+		workspaceScanProblemsEnabled: readBoolean(
+			config,
+			'workspace.scanProblemsEnabled',
+			CONFIG_DEFAULTS.workspaceScanProblemsEnabled,
+		),
+		workspaceScanRespectGitignore: readBoolean(
+			config,
+			'workspace.scanRespectGitignore',
+			CONFIG_DEFAULTS.workspaceScanRespectGitignore,
+		),
+		workspaceScanSkipBinaryFiles: readBoolean(
+			config,
+			'workspace.scanSkipBinaryFiles',
+			CONFIG_DEFAULTS.workspaceScanSkipBinaryFiles,
+		),
+		workspaceScanUseDefaultExcludes: readBoolean(
+			config,
+			'workspace.scanUseDefaultExcludes',
+			CONFIG_DEFAULTS.workspaceScanUseDefaultExcludes,
 		),
 		workspaceScanExcludes: Object.freeze(
 			readStrings(

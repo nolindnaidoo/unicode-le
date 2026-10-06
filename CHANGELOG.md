@@ -10,10 +10,22 @@ separate product on its own cadence and keeps its own
 [CHANGELOG](crate/CHANGELOG.md). The entries below 1.0.0 describe this
 repository while it held the CLI alone.
 
-## [1.1.0] - 2026-10-05
+## [1.1.0] - 2026-10-06
 
 ### Added
 
+- Scan one folder. `Unicode-LE: Scan Folder for Unicode Risks` screens every
+  file under a folder, from the command palette or from a folder in the
+  Explorer. The report names each file relative to that folder.
+- A scan's findings can go to the Problems panel. With
+  `unicode-le.workspace.scanProblemsEnabled` on, each finding is a warning on
+  its line, and each scan replaces the last one's. It is off by default. A
+  message gives the codepoint, never the character.
+- `unicode-le.workspace.scanMaxResults` caps how many findings a scan lists
+  before it stops reading. The default is 10,000.
+- `unicode-le.workspace.scanAlwaysInclude` reads a path whatever the switches
+  below say.
+- A scan's report ends with a line for each thing it left unread.
 - Positions are now a setting. `unicode-le.showPositions` decides whether the
   output gives the line and column of each finding, and
   `unicode-le.clipboardIncludesPositions` decides the same for the copy on the
@@ -21,6 +33,17 @@ repository while it held the CLI alone.
 
 ### Changed
 
+- A folder or workspace scan skips more by default, and says so. Three
+  switches are on: `unicode-le.workspace.scanUseDefaultExcludes` skips
+  dependency folders, build output, caches and lockfiles,
+  `unicode-le.workspace.scanRespectGitignore` skips whatever the project's
+  `.gitignore` files skip, and `unicode-le.workspace.scanSkipBinaryFiles`
+  skips images, fonts, archives and other files that are not text. A scan
+  used to read everything outside six folders and name every image as not
+  judged. A character hidden in a skipped file is not reported, so turn the
+  switches off to screen everything.
+- `unicode-le.workspace.scanExcludes` is empty by default. The six patterns
+  it held are covered by the built-in list. It now adds to that list.
 - No command is bound to a key by default any more. The one default this
   extension shipped sat on a key the editor, the system or another LE
   extension already used. Every command can still be given a key under

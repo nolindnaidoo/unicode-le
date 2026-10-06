@@ -12,12 +12,20 @@
 	"Not judged": "判定対象外",
 	"Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.": "何も見つかりませんでした。見つからないことは安全の保証ではありません。テーブルの作成後に追加された紛らわしい文字は検出されません。",
 	"Run Unicode-LE: Detect Unicode Risks": "Unicode-LE を実行: Unicode のリスクを検出",
-	"Scanning the workspace for Unicode risks...": "ワークスペースの Unicode リスクをスキャンしています...",
 	"Unicode-LE report": "Unicode-LE レポート",
 	"Unicode-LE settings: {0}": "Unicode-LE の設定: {0}",
 	"resembles {0}": "{0} に類似",
 	"{0} file(s) larger than the safety limit were not read.": "安全上限を超える {0} 個のファイルは読み込まれませんでした。",
 	"{0} finding(s)": "{0} 件の検出",
 	"{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.": "スキャンしたファイル {1} 個で {0} 件を検出。{2} 個のファイルは完全には判定されていません。",
-	"{0} of {1} files": "{0} / {1} ファイル"
+	"{0} of {1} files": "{0} / {1} ファイル",
+	"Scanning files...": "ファイルをスキャンしています...",
+	"Scan Folder": "フォルダーをスキャン",
+	"More files matched than the limit of {0}. The rest were not read.": "上限の {0} 個を超えるファイルが一致しました。残りは読み取られていません。",
+	"The results limit was reached. The rest of the files were not read.": "結果の上限に達しました。残りのファイルは読み取られていません。",
+	"{0} file(s) that are not UTF-8 text were not read.": "UTF-8 テキストではない {0} 個のファイルは読み取られていません。",
+	"dependency folders, build output, caches and lockfiles": "依存関係フォルダー、ビルド出力、キャッシュ、ロックファイル",
+	"images, fonts, archives and other binary files": "画像、フォント、アーカイブ、その他のバイナリファイル",
+	"{0} file(s) ignored by .gitignore": ".gitignore で無視された {0} 個のファイル",
+	"Not read: {0}. The {1} settings change this.": "読み取られていないもの: {0}。設定 {1} で変更できます。"
 }

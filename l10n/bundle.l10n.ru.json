@@ -12,12 +12,20 @@
 	"Not judged": "Не оценено",
 	"Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.": "Ничего не найдено. Тишина не означает гарантию: похожий символ, добавленный после построения таблиц, не будет отмечен.",
 	"Run Unicode-LE: Detect Unicode Risks": "Запустить Unicode-LE: найти риски Unicode",
-	"Scanning the workspace for Unicode risks...": "Проверка рабочей области на риски Unicode...",
 	"Unicode-LE report": "Отчёт Unicode-LE",
 	"Unicode-LE settings: {0}": "Настройки Unicode-LE: {0}",
 	"resembles {0}": "похож на {0}",
 	"{0} file(s) larger than the safety limit were not read.": "Файлы сверх предела безопасности не прочитаны: {0}.",
 	"{0} finding(s)": "Находок: {0}",
 	"{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.": "Находок: {0} в проверенных файлах ({1}); не полностью оценено файлов: {2}.",
-	"{0} of {1} files": "{0} из {1} файлов"
+	"{0} of {1} files": "{0} из {1} файлов",
+	"Scanning files...": "Сканирование файлов...",
+	"Scan Folder": "Сканировать папку",
+	"More files matched than the limit of {0}. The rest were not read.": "Найдено больше файлов, чем лимит {0}. Остальные не были прочитаны.",
+	"The results limit was reached. The rest of the files were not read.": "Достигнут лимит результатов. Остальные файлы не были прочитаны.",
+	"{0} file(s) that are not UTF-8 text were not read.": "Файлов, не являющихся текстом UTF-8, которые не были прочитаны: {0}.",
+	"dependency folders, build output, caches and lockfiles": "папки зависимостей, результаты сборки, кэши и lock-файлы",
+	"images, fonts, archives and other binary files": "изображения, шрифты, архивы и другие двоичные файлы",
+	"{0} file(s) ignored by .gitignore": "файлов, игнорируемых .gitignore: {0}",
+	"Not read: {0}. The {1} settings change this.": "Не прочитано: {0}. Это меняют параметры {1}."
 }

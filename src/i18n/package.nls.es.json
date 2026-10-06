@@ -2,6 +2,7 @@
 	"manifest.command.category": "Unicode-LE",
 	"manifest.command.detect.title": "Detectar riesgos Unicode",
 	"manifest.command.scan-workspace.title": "Analizar el área de trabajo en busca de riesgos Unicode",
+	"manifest.command.scan-folder.title": "Analizar la carpeta en busca de riesgos Unicode",
 	"manifest.command.settings.title": "Abrir configuración",
 	"manifest.command.help.title": "Ayuda y resolución de problemas",
 	"manifest.settings.title": "Configuración de Unicode-LE",
@@ -26,9 +27,15 @@
 	"manifest.settings.show.positions.desc": "Mostrar la línea y la columna de cada resultado",
 	"manifest.settings.statusbar.enabled.desc": "Mostrar la entrada de Unicode-LE en la barra de estado para un acceso rápido",
 	"manifest.settings.telemetry.desc": "Habilitar registros de telemetría solo locales en el panel de salida",
-	"manifest.settings.workspace.excludes.desc": "Patrones glob de los archivos que omite el análisis del área de trabajo",
-	"manifest.settings.workspace.max-files.desc": "Número máximo de archivos que lee un análisis del área de trabajo",
-	"manifest.settings.workspace.patterns.desc": "Patrones glob de los archivos que lee el análisis del área de trabajo",
+	"manifest.settings.workspace.excludes.desc": "Patrones glob de más archivos que omite un análisis de carpeta o de área de trabajo, además de la lista integrada. Ejemplo: **/fixtures/**",
+	"manifest.settings.workspace.max-files.desc": "El máximo de archivos que lee un análisis de carpeta o de área de trabajo",
+	"manifest.settings.workspace.patterns.desc": "Patrones glob de los archivos que lee un análisis de carpeta o de área de trabajo",
 	"manifest.capability.untrusted-workspaces.desc": "Funcionalidad limitada en espacios de trabajo no confiables",
-	"manifest.mcp.label": "Detección de riesgos Unicode de Unicode-LE para el modo agente"
+	"manifest.mcp.label": "Detección de riesgos Unicode de Unicode-LE para el modo agente",
+	"manifest.settings.workspace.max-results.desc": "El máximo de resultados que informa un análisis de carpeta o de área de trabajo antes de dejar de leer",
+	"manifest.settings.workspace.gitignore.desc": "Omitir los archivos que omiten los archivos .gitignore del proyecto",
+	"manifest.settings.workspace.always-include.desc": "Patrones glob de los archivos que un análisis de carpeta o de área de trabajo lee aunque la lista integrada o .gitignore los omitirían. Ejemplo: **/vendor/**",
+	"manifest.settings.workspace.binary.desc": "Omitir imágenes, fuentes, archivos comprimidos y otros archivos que no son texto",
+	"manifest.settings.workspace.default-excludes.desc": "Omitir carpetas de dependencias, resultados de compilación, cachés y archivos de bloqueo, como node_modules, dist, .next y package-lock.json",
+	"manifest.settings.workspace.problems.desc": "Mostrar también los hallazgos de un análisis de carpeta o área de trabajo en el panel Problemas"
 }

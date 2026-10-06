@@ -2,6 +2,7 @@
 	"manifest.command.category": "Unicode-LE",
 	"manifest.command.detect.title": "Найти риски Unicode",
 	"manifest.command.scan-workspace.title": "Проверить рабочую область на риски Unicode",
+	"manifest.command.scan-folder.title": "Проверить папку на риски Unicode",
 	"manifest.command.settings.title": "Открыть настройки",
 	"manifest.command.help.title": "Справка и устранение неполадок",
 	"manifest.settings.title": "Настройки Unicode-LE",
@@ -26,9 +27,15 @@
 	"manifest.settings.show.positions.desc": "Показывать строку и столбец каждого результата",
 	"manifest.settings.statusbar.enabled.desc": "Показывать элемент Unicode-LE в строке состояния для быстрого доступа",
 	"manifest.settings.telemetry.desc": "Включить локальные журналы телеметрии в панели вывода",
-	"manifest.settings.workspace.excludes.desc": "Шаблоны glob для файлов, которые проверка рабочей области пропускает",
-	"manifest.settings.workspace.max-files.desc": "Наибольшее число файлов, которое читает одна проверка рабочей области",
-	"manifest.settings.workspace.patterns.desc": "Шаблоны glob для файлов, которые читает проверка рабочей области",
+	"manifest.settings.workspace.excludes.desc": "Glob-шаблоны дополнительных файлов, которые пропускает сканирование папки или рабочей области, помимо встроенного списка. Пример: **/fixtures/**",
+	"manifest.settings.workspace.max-files.desc": "Наибольшее число файлов, которое читает одно сканирование папки или рабочей области",
+	"manifest.settings.workspace.patterns.desc": "Glob-шаблоны файлов, которые читает сканирование папки или рабочей области",
 	"manifest.capability.untrusted-workspaces.desc": "Ограниченная функциональность в недоверенных рабочих пространствах",
-	"manifest.mcp.label": "Обнаружение рисков Unicode с помощью Unicode-LE для режима агента"
+	"manifest.mcp.label": "Обнаружение рисков Unicode с помощью Unicode-LE для режима агента",
+	"manifest.settings.workspace.max-results.desc": "Наибольшее число результатов, которое сообщает одно сканирование папки или рабочей области, прежде чем прекратить чтение",
+	"manifest.settings.workspace.gitignore.desc": "Пропускать файлы, которые пропускают файлы .gitignore проекта",
+	"manifest.settings.workspace.always-include.desc": "Glob-шаблоны файлов, которые сканирование папки или рабочей области читает, даже если встроенный список или .gitignore их пропустили бы. Пример: **/vendor/**",
+	"manifest.settings.workspace.binary.desc": "Пропускать изображения, шрифты, архивы и другие нетекстовые файлы",
+	"manifest.settings.workspace.default-excludes.desc": "Пропускать папки зависимостей, результаты сборки, кэши и lock-файлы, например node_modules, dist, .next и package-lock.json",
+	"manifest.settings.workspace.problems.desc": "Также показывать находки проверки папки или рабочей области на панели «Проблемы»"
 }
