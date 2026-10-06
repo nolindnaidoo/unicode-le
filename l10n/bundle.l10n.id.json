@@ -12,12 +12,20 @@
 	"Not judged": "Tidak dinilai",
 	"Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.": "Tidak ada yang ditemukan. Hening bukan berarti aman: karakter mirip yang ditambahkan setelah tabel dibuat tidak akan ditandai.",
 	"Run Unicode-LE: Detect Unicode Risks": "Jalankan Unicode-LE: Deteksi Risiko Unicode",
-	"Scanning the workspace for Unicode risks...": "Memindai ruang kerja untuk risiko Unicode...",
 	"Unicode-LE report": "Laporan Unicode-LE",
 	"Unicode-LE settings: {0}": "Pengaturan Unicode-LE: {0}",
 	"resembles {0}": "mirip {0}",
 	"{0} file(s) larger than the safety limit were not read.": "{0} berkas yang melebihi batas keamanan tidak dibaca.",
 	"{0} finding(s)": "{0} temuan",
 	"{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.": "{0} temuan dalam {1} berkas yang dipindai; {2} berkas tidak dinilai sepenuhnya.",
-	"{0} of {1} files": "{0} dari {1} berkas"
+	"{0} of {1} files": "{0} dari {1} berkas",
+	"Scanning files...": "Memindai file...",
+	"Scan Folder": "Pindai Folder",
+	"More files matched than the limit of {0}. The rest were not read.": "Jumlah file yang cocok melebihi batas {0}. Sisanya tidak dibaca.",
+	"The results limit was reached. The rest of the files were not read.": "Batas hasil telah tercapai. File lainnya tidak dibaca.",
+	"{0} file(s) that are not UTF-8 text were not read.": "{0} file yang bukan teks UTF-8 tidak dibaca.",
+	"dependency folders, build output, caches and lockfiles": "folder dependensi, keluaran build, cache, dan lockfile",
+	"images, fonts, archives and other binary files": "gambar, font, arsip, dan file biner lainnya",
+	"{0} file(s) ignored by .gitignore": "{0} file yang diabaikan oleh .gitignore",
+	"Not read: {0}. The {1} settings change this.": "Tidak dibaca: {0}. Pengaturan {1} mengubah hal ini."
 }

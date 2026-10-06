@@ -2,6 +2,7 @@
 	"manifest.command.category": "Unicode-LE",
 	"manifest.command.detect.title": "Unicode 위험 감지",
 	"manifest.command.scan-workspace.title": "작업 영역에서 Unicode 위험 검사",
+	"manifest.command.scan-folder.title": "폴더에서 Unicode 위험 검사",
 	"manifest.command.settings.title": "설정 열기",
 	"manifest.command.help.title": "도움말 및 문제 해결",
 	"manifest.settings.title": "Unicode-LE 설정",
@@ -26,9 +27,15 @@
 	"manifest.settings.show.positions.desc": "각 결과의 줄과 열을 표시합니다",
 	"manifest.settings.statusbar.enabled.desc": "빠른 액세스를 위해 상태 표시줄에 Unicode-LE 항목 표시",
 	"manifest.settings.telemetry.desc": "로컬 전용 텔레메트리 로그를 출력 패널에 활성화",
-	"manifest.settings.workspace.excludes.desc": "작업 영역 검사에서 건너뛸 파일의 glob 패턴",
-	"manifest.settings.workspace.max-files.desc": "한 번의 작업 영역 검사에서 읽는 최대 파일 수",
-	"manifest.settings.workspace.patterns.desc": "작업 영역 검사에서 읽을 파일의 glob 패턴",
+	"manifest.settings.workspace.excludes.desc": "폴더 또는 작업 영역 검사에서 기본 제공 목록 외에 추가로 건너뛰는 파일의 glob 패턴. 예: **/fixtures/**",
+	"manifest.settings.workspace.max-files.desc": "폴더 또는 작업 영역 검사 한 번에 읽는 최대 파일 수",
+	"manifest.settings.workspace.patterns.desc": "폴더 또는 작업 영역 검사에서 읽는 파일의 glob 패턴",
 	"manifest.capability.untrusted-workspaces.desc": "신뢰할 수 없는 작업 영역에서 제한된 기능",
-	"manifest.mcp.label": "에이전트 모드용 Unicode-LE Unicode 위험 감지"
+	"manifest.mcp.label": "에이전트 모드용 Unicode-LE Unicode 위험 감지",
+	"manifest.settings.workspace.max-results.desc": "폴더 또는 작업 영역 검사 한 번이 읽기를 멈추기 전에 보고하는 최대 결과 수",
+	"manifest.settings.workspace.gitignore.desc": "프로젝트의 .gitignore 파일이 제외하는 파일을 제외합니다",
+	"manifest.settings.workspace.always-include.desc": "기본 제공 목록이나 .gitignore가 건너뛰더라도 폴더 또는 작업 영역 검사에서 읽는 파일의 glob 패턴. 예: **/vendor/**",
+	"manifest.settings.workspace.binary.desc": "이미지, 글꼴, 압축 파일 등 텍스트가 아닌 파일을 건너뜁니다",
+	"manifest.settings.workspace.default-excludes.desc": "node_modules, dist, .next, package-lock.json 등 종속성 폴더, 빌드 출력, 캐시, 잠금 파일을 건너뜁니다",
+	"manifest.settings.workspace.problems.desc": "폴더 또는 작업 영역 검사의 결과를 문제 패널에도 표시"
 }

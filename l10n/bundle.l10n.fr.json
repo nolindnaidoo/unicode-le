@@ -12,12 +12,20 @@
 	"Not judged": "Non évalué",
 	"Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.": "Rien trouvé. Le silence n'est pas une garantie : un caractère confondable ajouté après la création des tables n'est pas signalé.",
 	"Run Unicode-LE: Detect Unicode Risks": "Exécuter Unicode-LE : détecter les risques Unicode",
-	"Scanning the workspace for Unicode risks...": "Analyse de l'espace de travail à la recherche de risques Unicode...",
 	"Unicode-LE report": "Rapport Unicode-LE",
 	"Unicode-LE settings: {0}": "Paramètres de Unicode-LE : {0}",
 	"resembles {0}": "ressemble à {0}",
 	"{0} file(s) larger than the safety limit were not read.": "{0} fichier(s) dépassant la limite de sécurité n'ont pas été lus.",
 	"{0} finding(s)": "{0} résultat(s)",
 	"{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.": "{0} résultat(s) dans {1} fichier(s) analysé(s) ; {2} fichier(s) pas entièrement évalué(s).",
-	"{0} of {1} files": "{0} fichiers sur {1}"
+	"{0} of {1} files": "{0} fichiers sur {1}",
+	"Scanning files...": "Analyse des fichiers...",
+	"Scan Folder": "Analyser le dossier",
+	"More files matched than the limit of {0}. The rest were not read.": "Plus de fichiers correspondent que la limite de {0}. Les autres n'ont pas été lus.",
+	"The results limit was reached. The rest of the files were not read.": "La limite de résultats a été atteinte. Les autres fichiers n'ont pas été lus.",
+	"{0} file(s) that are not UTF-8 text were not read.": "{0} fichier(s) qui ne sont pas du texte UTF-8 n'ont pas été lus.",
+	"dependency folders, build output, caches and lockfiles": "dossiers de dépendances, sorties de build, caches et fichiers de verrouillage",
+	"images, fonts, archives and other binary files": "images, polices, archives et autres fichiers binaires",
+	"{0} file(s) ignored by .gitignore": "{0} fichier(s) ignoré(s) par .gitignore",
+	"Not read: {0}. The {1} settings change this.": "Non lu : {0}. Les paramètres {1} permettent de changer cela."
 }

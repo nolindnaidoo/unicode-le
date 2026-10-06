@@ -117,6 +117,11 @@
 				"category": "%manifest.command.category%"
 			},
 			{
+				"command": "unicode-le.scanFolder",
+				"title": "%manifest.command.scan-folder.title%",
+				"category": "%manifest.command.category%"
+			},
+			{
 				"command": "unicode-le.openSettings",
 				"title": "%manifest.command.settings.title%",
 				"category": "%manifest.command.category%"
@@ -142,10 +147,20 @@
 					"command": "unicode-le.scanWorkspace"
 				},
 				{
+					"command": "unicode-le.scanFolder"
+				},
+				{
 					"command": "unicode-le.openSettings"
 				},
 				{
 					"command": "unicode-le.help"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "unicode-le.scanFolder",
+					"when": "explorerResourceIsFolder",
+					"group": "7_modification@1"
 				}
 			]
 		},
@@ -246,24 +261,26 @@
 				},
 				"unicode-le.workspace.scanExcludes": {
 					"type": "array",
-					"default": [
-						"**/node_modules/**",
-						"**/.git/**",
-						"**/dist/**",
-						"**/build/**",
-						"**/target/**",
-						"**/*.min.js"
-					],
+					"default": [],
 					"items": {
 						"type": "string"
 					},
-					"description": "%manifest.settings.workspace.excludes.desc%"
+					"description": "%manifest.settings.workspace.excludes.desc%",
+					"order": 104
 				},
 				"unicode-le.workspace.scanMaxFiles": {
 					"type": "number",
 					"default": 5000,
 					"minimum": 1,
-					"description": "%manifest.settings.workspace.max-files.desc%"
+					"description": "%manifest.settings.workspace.max-files.desc%",
+					"order": 106
+				},
+				"unicode-le.workspace.scanMaxResults": {
+					"type": "number",
+					"default": 10000,
+					"minimum": 1,
+					"description": "%manifest.settings.workspace.max-results.desc%",
+					"order": 107
 				},
 				"unicode-le.workspace.scanPatterns": {
 					"type": "array",
@@ -273,7 +290,41 @@
 					"items": {
 						"type": "string"
 					},
-					"description": "%manifest.settings.workspace.patterns.desc%"
+					"description": "%manifest.settings.workspace.patterns.desc%",
+					"order": 100
+				},
+				"unicode-le.workspace.scanProblemsEnabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "%manifest.settings.workspace.problems.desc%",
+					"order": 109
+				},
+				"unicode-le.workspace.scanRespectGitignore": {
+					"type": "boolean",
+					"default": true,
+					"description": "%manifest.settings.workspace.gitignore.desc%",
+					"order": 102
+				},
+				"unicode-le.workspace.scanAlwaysInclude": {
+					"type": "array",
+					"default": [],
+					"items": {
+						"type": "string"
+					},
+					"description": "%manifest.settings.workspace.always-include.desc%",
+					"order": 105
+				},
+				"unicode-le.workspace.scanSkipBinaryFiles": {
+					"type": "boolean",
+					"default": true,
+					"description": "%manifest.settings.workspace.binary.desc%",
+					"order": 103
+				},
+				"unicode-le.workspace.scanUseDefaultExcludes": {
+					"type": "boolean",
+					"default": true,
+					"description": "%manifest.settings.workspace.default-excludes.desc%",
+					"order": 101
 				}
 			}
 		},

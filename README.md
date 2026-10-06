@@ -119,6 +119,85 @@ In JSON, YAML, TOML, INI and `.properties`, `.env`, CSV and TSV a finding also c
 
 The workspace scan reads every file as bytes. A UTF-16 or UTF-32 file, a binary file and a file that is not valid UTF-8 are **refused by name** rather than decoded as something else, because a wrong decode invents findings: read UTF-16 as UTF-8 and every second byte becomes an invisible character that is not in the file.
 
+## Across a folder or a workspace
+
+Detect reads the document you have open. A scan reads many files from disk and gives one report.
+
+- **The whole workspace**: run `Unicode-LE: Scan Workspace for Unicode Risks` from the command palette.
+- **One folder**: right-click it in the Explorer and choose `Scan Folder for Unicode Risks`, or run `Unicode-LE: Scan Folder for Unicode Risks` and pick one.
+
+The report has a section for each file with a finding, and for each file that could not be judged:
+
+```markdown
+# Unicode-LE report
+
+3 finding(s) in 4 file(s) scanned; 2 file(s) not fully judged.
+
+## `latin1.txt`
+
+- **Not judged** (`binary_or_undecodable`): not valid UTF-8 at byte 3: the encoding is unknown and is not guessed
+
+## `notes.txt`
+
+- **Not judged** (`encoding_unknown`): a UTF-16LE byte-order mark: this reads UTF-8 only, and decoding UTF-16LE as UTF-8 would invent invisible and unassigned characters that are not in the file
+
+## `src/login.ts`
+
+- **1:7** · mixed-script · high · U+0430
+- **1:8** · confusable · high · U+0430 (resembles U+0061)
+- **1:17** · bidi-control · high · U+202E
+```
+
+Each finding also carries a sentence saying why it matters, left out here.
+
+**What a scan reads.** Files come from disk, so an unsaved edit is not seen. A file over the safety size is left unread. A text file that is not UTF-8 is named in the report with the reason, never guessed at and never passed over. It stops at 5,000 files or 10,000 listed findings. The report ends with a line for each thing it left out.
+
+**A scan that skips is not a clearance.** By default a scan does not read dependency folders, files the project's `.gitignore` leaves out, or binary files. A character hidden in one of those is not reported. To screen everything, turn the three switches off.
+
+**What it skips, and how to change that.** Three switches are on by default, and each can be turned off on its own in Settings:
+
+| Switch | Skips |
+|---|---|
+| `scanUseDefaultExcludes` | Dependency folders, build output, tool caches and lockfiles. The full list is below |
+| `scanRespectGitignore` | Whatever the project's `.gitignore` files skip |
+| `scanSkipBinaryFiles` | Images, fonts, archives and other files that are not text |
+
+Two lists adjust the result without turning a switch off. To skip more, add a pattern to `scanExcludes`. To read something a switch would skip, add it to `scanAlwaysInclude`:
+
+```jsonc
+{
+	// Also skip the test fixtures.
+	"unicode-le.workspace.scanExcludes": ["**/fixtures/**"],
+	// Read the vendored code, though the built-in list skips it.
+	"unicode-le.workspace.scanAlwaysInclude": ["**/vendor/**"]
+}
+```
+
+`Unicode-LE: Open Settings` opens all of these in the Settings editor.
+
+<details>
+<summary>The built-in list</summary>
+
+Folders, wherever they appear:
+
+<!-- built-in-folders -->
+`.git`, `.hg`, `.svn`, `node_modules`, `bower_components`, `jspm_packages`, `.pnpm-store`, `.yarn`, `vendor`, `site-packages`, `Pods`, `Carthage`, `dist`, `build`, `out`, `target`, `_build`, `_site`, `dist-newstyle`, `zig-out`, `storybook-static`, `cdk.out`, `DerivedData`, `CMakeFiles`, `.next`, `.nuxt`, `.output`, `.svelte-kit`, `.angular`, `.astro`, `.docusaurus`, `.vuepress`, `.expo`, `.turbo`, `.parcel-cache`, `.cache`, `.sass-cache`, `.jekyll-cache`, `.dart_tool`, `.pub-cache`, `.gradle`, `.kotlin`, `.cxx`, `.externalNativeBuild`, `captures`, `ephemeral`, `.symlinks`, `.swiftpm`, `.build`, `.bundle`, `.stack-work`, `.zig-cache`, `.godot`, `elm-stuff`, `.vercel`, `.netlify`, `.serverless`, `.aws-sam`, `.terraform`, `.venv`, `venv`, `__pycache__`, `.tox`, `.nox`, `.mypy_cache`, `.pytest_cache`, `.ruff_cache`, `.ipynb_checkpoints`, `.eggs`, `coverage`, `htmlcov`, `.nyc_output`, `.vscode-test`, `.idea`, `.vs`, `xcuserdata`, `*.egg-info`
+<!-- /built-in-folders -->
+
+Files, wherever they appear:
+
+<!-- built-in-files -->
+`*.min.js`, `*.min.css`, `*.map`, `*.snap`, `*.lock`, `package-lock.json`, `pnpm-lock.yaml`, `npm-shrinkwrap.json`, `go.sum`, `*.pbxproj`, `*.iml`, `local.properties`, `output-metadata.json`, `.flutter-plugins`, `.flutter-plugins-dependencies`, `.packages`, `Generated.xcconfig`, `flutter_export_environment.sh`, `GeneratedPluginRegistrant.*`, `fastlane/report.xml`, `fastlane/test_output/**`, `doc/api/**`
+<!-- /built-in-files -->
+
+Not on the list, because they are ordinary folders in many projects: `bin`, `obj`, `tmp`, `logs`, `public`, `generated`. A project that generates those ignores them in git, and the scan reads `.gitignore`.
+
+</details>
+
+**In the Problems panel.** Turn on `unicode-le.workspace.scanProblemsEnabled` and each finding is also a warning on its line. Each scan replaces the last one's. A message gives the codepoint, never the character.
+
+The settings that shape a scan are under [Settings](#settings).
+
 ## The CLI
 
 The same screen runs from a terminal or a CI step: a Rust CLI in [`crate/`](crate/README.md), sharing one corpus with the extension — [`crate/fixtures/`](crate/fixtures/) — so the two can never read a document differently.
@@ -141,7 +220,8 @@ unicode-le mcp                        # the same screen over MCP on stdio
 | Command | Description |
 |---|---|
 | `Unicode-LE: Detect Unicode Risks` | Screen the active document, as the editor holds it |
-| `Unicode-LE: Scan Workspace for Unicode Risks` | Screen every file matched by `workspace.scanPatterns`, read from disk as UTF-8 |
+| `Unicode-LE: Scan Workspace for Unicode Risks` | Screen every file in the workspace, read from disk as UTF-8 |
+| `Unicode-LE: Scan Folder for Unicode Risks` | The same for one folder. Also on a folder in the Explorer |
 | `Unicode-LE: Open Settings` | Open Unicode-LE settings |
 | `Unicode-LE: Help & Troubleshooting` | Built-in documentation |
 
@@ -157,9 +237,15 @@ No command is bound to a key by default. Give any of them one under **Keyboard S
 | `unicode-le.showPositions` | `true` | Show the line and column of each finding |
 | `unicode-le.copyToClipboardEnabled` | `false` | Also copy the report to the clipboard |
 | `unicode-le.clipboardIncludesPositions` | `true` | Include the line and column in that copy |
-| `unicode-le.workspace.scanPatterns` | `["**/*"]` | Glob patterns of the files the workspace scan reads |
-| `unicode-le.workspace.scanExcludes` | `node_modules`, `.git`, `dist`, `build`, `target`, `*.min.js` | Glob patterns the workspace scan skips |
-| `unicode-le.workspace.scanMaxFiles` | `5000` | The most files one workspace scan reads |
+| `unicode-le.workspace.scanPatterns` | `["**/*"]` | The files a folder or workspace scan reads |
+| `unicode-le.workspace.scanUseDefaultExcludes` | `true` | Skip dependency folders, build output, caches and lockfiles |
+| `unicode-le.workspace.scanRespectGitignore` | `true` | Skip what the project's `.gitignore` files skip |
+| `unicode-le.workspace.scanSkipBinaryFiles` | `true` | Skip images, fonts, archives and other files that are not text |
+| `unicode-le.workspace.scanExcludes` | `[]` | More files to skip, as glob patterns |
+| `unicode-le.workspace.scanAlwaysInclude` | `[]` | Files to read even when one of the three above would skip them |
+| `unicode-le.workspace.scanMaxFiles` | `5000` | The most files one scan reads |
+| `unicode-le.workspace.scanMaxResults` | `10000` | The most findings one scan lists before it stops reading |
+| `unicode-le.workspace.scanProblemsEnabled` | `false` | Also show a scan's findings in the Problems panel |
 | `unicode-le.notificationsLevel` | `silent` | `all` = every notification, `important` = warnings + errors, `silent` = errors only |
 | `unicode-le.safety.enabled` | `true` | Guardrails for large files |
 | `unicode-le.safety.fileSizeWarnBytes` | `1000000` | Warn about a larger active document; leave larger workspace files unread |
@@ -213,12 +299,12 @@ a build only tells you how busy the runner was.
 <!-- coverage:start -->
 | Metric | Coverage |
 | --- | --- |
-| Statements | 86.94% |
-| Branches | 78.39% |
-| Functions | 94.60% |
-| Lines | 88.81% |
+| Statements | 88.40% |
+| Branches | 80.70% |
+| Functions | 95.21% |
+| Lines | 90.13% |
 
-121 test cases across 11 files, plus an integration suite that runs
+166 test cases across 13 files, plus an integration suite that runs
 in a real VS Code extension host and an end-to-end test that installs the
 built `.vsix` into a clean profile.
 

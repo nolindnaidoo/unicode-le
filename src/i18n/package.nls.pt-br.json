@@ -2,6 +2,7 @@
 	"manifest.command.category": "Unicode-LE",
 	"manifest.command.detect.title": "Detectar riscos Unicode",
 	"manifest.command.scan-workspace.title": "Verificar riscos Unicode no espaço de trabalho",
+	"manifest.command.scan-folder.title": "Verificar riscos Unicode na pasta",
 	"manifest.command.settings.title": "Abrir configurações",
 	"manifest.command.help.title": "Ajuda e solução de problemas",
 	"manifest.settings.title": "Configurações do Unicode-LE",
@@ -26,9 +27,15 @@
 	"manifest.settings.show.positions.desc": "Mostrar a linha e a coluna de cada resultado",
 	"manifest.settings.statusbar.enabled.desc": "Mostrar a entrada do Unicode-LE na barra de status para acesso rápido",
 	"manifest.settings.telemetry.desc": "Habilitar logs de telemetria somente locais para o painel Saída",
-	"manifest.settings.workspace.excludes.desc": "Padrões glob dos arquivos que a verificação do espaço de trabalho ignora",
-	"manifest.settings.workspace.max-files.desc": "Número máximo de arquivos que uma verificação do espaço de trabalho lê",
-	"manifest.settings.workspace.patterns.desc": "Padrões glob dos arquivos que a verificação do espaço de trabalho lê",
+	"manifest.settings.workspace.excludes.desc": "Padrões glob de mais arquivos ignorados por uma verificação de pasta ou de espaço de trabalho, além da lista integrada. Exemplo: **/fixtures/**",
+	"manifest.settings.workspace.max-files.desc": "O máximo de arquivos lidos por uma verificação de pasta ou de espaço de trabalho",
+	"manifest.settings.workspace.patterns.desc": "Padrões glob dos arquivos lidos por uma verificação de pasta ou de espaço de trabalho",
 	"manifest.capability.untrusted-workspaces.desc": "Funcionalidade limitada em áreas de trabalho não confiáveis",
-	"manifest.mcp.label": "Detecção de riscos Unicode do Unicode-LE para o modo agente"
+	"manifest.mcp.label": "Detecção de riscos Unicode do Unicode-LE para o modo agente",
+	"manifest.settings.workspace.max-results.desc": "O máximo de resultados informados por uma verificação de pasta ou de espaço de trabalho antes de parar de ler",
+	"manifest.settings.workspace.gitignore.desc": "Ignorar os arquivos que os arquivos .gitignore do projeto ignoram",
+	"manifest.settings.workspace.always-include.desc": "Padrões glob dos arquivos que uma verificação de pasta ou de espaço de trabalho lê mesmo quando a lista integrada ou o .gitignore os ignoraria. Exemplo: **/vendor/**",
+	"manifest.settings.workspace.binary.desc": "Ignorar imagens, fontes, arquivos compactados e outros arquivos que não são texto",
+	"manifest.settings.workspace.default-excludes.desc": "Ignorar pastas de dependências, saídas de build, caches e lockfiles, como node_modules, dist, .next e package-lock.json",
+	"manifest.settings.workspace.problems.desc": "Mostrar também os achados de uma verificação de pasta ou espaço de trabalho no painel Problemas"
 }

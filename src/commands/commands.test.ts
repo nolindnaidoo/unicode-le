@@ -1,16 +1,22 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	_clipboardText,
 	_createDocument,
 	_createExtensionContext,
+	_diagnostics,
 	_openedDocuments,
 	_registeredCommands,
 	_resetMockState,
+	_respondToOpenDialog,
 	_setActiveEditor,
 	_setConfig,
 	_setWorkspaceFiles,
 	_shownMessages,
 	executedBuiltins,
+	Uri,
+	workspace,
 } from '../__mocks__/vscode';
 import { registerOpenSettingsCommand } from '../config/settings';
 import type { Telemetry } from '../telemetry/telemetry';
@@ -35,10 +41,10 @@ function makeDeps() {
 	};
 }
 
-async function runCommand(id: string): Promise<void> {
+async function runCommand(id: string, ...args: unknown[]): Promise<void> {
 	const handler = _registeredCommands().get(id);
 	if (!handler) throw new Error(`command not registered: ${id}`);
-	await handler();
+	await handler(...args);
 }
 
 function report(): string {
@@ -139,7 +145,21 @@ describe('unicode-le.detect', () => {
 	});
 });
 
-describe('unicode-le.scanWorkspace', () => {
+const TREE = {
+	'/w/src/clean.ts': 'const total = 1;\n',
+	'/w/src/login.ts': 'const pаypal = "‮";\n',
+	'/w/notes.txt': new Uint8Array([0xff, 0xfe, 0x41, 0x00]),
+	'/w/latin1.txt': new Uint8Array([0x63, 0x61, 0x66, 0xe9]),
+	'/w/node_modules/x/index.js': 'const a = "‮";\n',
+	'/w/logo.png': new Uint8Array([0x89, 0x50, 0x00, 0x47]),
+};
+
+function open(files: Record<string, string | Uint8Array> = TREE): void {
+	_setWorkspaceFiles(files);
+	workspace.workspaceFolders = [{ uri: Uri.file('/w'), name: 'w', index: 0 }];
+}
+
+describe('unicode-le.scanWorkspace and unicode-le.scanFolder', () => {
 	it('warns when no workspace is open', async () => {
 		_setConfig('unicode-le.notificationsLevel', 'important');
 		await runCommand('unicode-le.scanWorkspace');
@@ -147,42 +167,144 @@ describe('unicode-le.scanWorkspace', () => {
 	});
 
 	it('reports each file with findings, and refuses what is not UTF-8 by name', async () => {
-		_setWorkspaceFiles({
-			'src/clean.ts': 'const total = 1;\n',
-			'src/login.ts': 'const pаypal = "‮";\n',
-			'notes.txt': new Uint8Array([0xff, 0xfe, 0x41, 0x00]),
-			'latin1.txt': new Uint8Array([0x63, 0x61, 0x66, 0xe9]),
-		});
+		open();
 		await runCommand('unicode-le.scanWorkspace');
 		const text = report();
-		expect(text).toContain('## `src/login.ts`');
-		expect(text).not.toContain('`src/clean.ts`');
-		expect(text).toContain('`encoding_unknown`');
-		expect(text).toContain('`binary_or_undecodable`');
-		expect(text).toContain('in 4 file(s) scanned');
+		expect(text).toContain('## `/w/src/login.ts`');
+		expect(text).not.toContain('`/w/src/clean.ts`');
+		expect(text).toMatch(
+			/## `\/w\/notes\.txt`\n\n- \*\*Not judged\*\* \(`encoding_unknown`\)/,
+		);
+		expect(text).toMatch(
+			/## `\/w\/latin1\.txt`\n\n- \*\*Not judged\*\* \(`binary_or_undecodable`\)/,
+		);
+		// Four were read: the dependency and the image never were.
+		expect(text).toContain('in 4 file(s) scanned; 2 file(s) not fully judged.');
+		expect(text).not.toContain('node_modules');
+		expect(text).not.toContain('logo.png');
+		expect(text).toContain(
+			'> Not read: dependency folders, build output, caches and lockfiles; images, fonts, archives and other binary files; 0 file(s) ignored by .gitignore. The `unicode-le.workspace.*` settings change this.',
+		);
+	});
+
+	it('reads a dependency folder and a binary file when the switches are off', async () => {
+		open();
+		_setConfig('unicode-le.workspace.scanUseDefaultExcludes', false);
+		_setConfig('unicode-le.workspace.scanSkipBinaryFiles', false);
+		await runCommand('unicode-le.scanWorkspace');
+		expect(report()).toContain('## `/w/node_modules/x/index.js`');
+		// Read, and refused by name: a NUL byte was never text.
+		expect(report()).toMatch(
+			/## `\/w\/logo\.png`\n\n- \*\*Not judged\*\* \(`binary_or_undecodable`\)/,
+		);
+		expect(report()).toContain('in 6 file(s) scanned');
+	});
+
+	it('reads one path a switch would skip when it is always included', async () => {
+		open();
+		_setConfig('unicode-le.workspace.scanAlwaysInclude', [
+			'**/node_modules/**',
+		]);
+		await runCommand('unicode-le.scanWorkspace');
+		expect(report()).toContain('## `/w/node_modules/x/index.js`');
 	});
 
 	it('orders the report by path, whatever order the search returned', async () => {
-		_setWorkspaceFiles({ 'z.txt': '‮', 'src/b.ts': '‮', 'a.txt': '‮' });
+		open({ '/w/z.txt': '‮', '/w/src/b.ts': '‮', '/w/a.txt': '‮' });
 		await runCommand('unicode-le.scanWorkspace');
 		const headings = report().match(/^## .+$/gm);
-		expect(headings).toEqual(['## `a.txt`', '## `src/b.ts`', '## `z.txt`']);
+		expect(headings).toEqual([
+			'## `/w/a.txt`',
+			'## `/w/src/b.ts`',
+			'## `/w/z.txt`',
+		]);
+	});
+
+	it('scans only the folder it is handed, and names files relative to it', async () => {
+		open({ ...TREE, '/w/other/x.ts': '‮' });
+		await runCommand('unicode-le.scanFolder', Uri.file('/w/src'));
+		expect(report()).toContain('## `login.ts`');
+		expect(report()).toContain('in 2 file(s) scanned');
+		expect(report()).not.toContain('x.ts');
+	});
+
+	it('asks for a folder from the palette, and does nothing when none is picked', async () => {
+		open();
+		_respondToOpenDialog(() => undefined);
+		await runCommand('unicode-le.scanFolder');
+		expect(_openedDocuments()).toHaveLength(0);
+
+		_respondToOpenDialog(() => [Uri.file('/w/src')]);
+		await runCommand('unicode-le.scanFolder');
+		expect(report()).toContain('## `login.ts`');
 	});
 
 	it('leaves a file over the safety limit unread, and says so', async () => {
 		_setConfig('unicode-le.safety.fileSizeWarnBytes', 1000);
-		_setWorkspaceFiles({ 'big.txt': `${'a'.repeat(2000)}‮`, 'small.txt': '​' });
+		open({ '/w/big.txt': `${'a'.repeat(2000)}‮`, '/w/small.txt': '​' });
 		await runCommand('unicode-le.scanWorkspace');
 		expect(report()).toContain(
-			'1 file(s) larger than the safety limit were not read.',
+			'> 1 file(s) larger than the safety limit were not read.',
 		);
-		expect(report()).not.toContain('`big.txt`');
+		expect(report()).not.toContain('`/w/big.txt`');
 	});
 
-	it('skips what the excludes name', async () => {
-		_setWorkspaceFiles({ 'node_modules/x/index.js': '‮', 'src/a.js': 'clean' });
+	it('stops at the results limit and says the rest was not read', async () => {
+		open({ '/w/a.txt': '‮‮‮', '/w/b.txt': '‮' });
+		_setConfig('unicode-le.workspace.scanMaxResults', 2);
 		await runCommand('unicode-le.scanWorkspace');
-		expect(report()).not.toContain('node_modules');
+		expect(report()).toContain('2 finding(s) in 1 file(s) scanned');
+		expect(report()).not.toContain('`/w/b.txt`');
+		expect(report()).toContain(
+			'> The results limit was reached. The rest of the files were not read.',
+		);
+	});
+
+	it('keeps findings out of the Problems panel unless asked, and replaces them each scan', async () => {
+		open();
+		await runCommand('unicode-le.scanWorkspace');
+		expect(_diagnostics().size).toBe(0);
+
+		_setConfig('unicode-le.workspace.scanProblemsEnabled', true);
+		await runCommand('unicode-le.scanWorkspace');
+		const problems = _diagnostics().get('/w/src/login.ts') ?? [];
+		expect(problems.length).toBeGreaterThan(0);
+		// The codepoint, never the character it names.
+		expect(problems.map((p) => p.message).join('\n')).toContain('U+202E');
+		expect(problems.map((p) => p.message).join('\n')).not.toContain('‮');
+		expect(problems.every((p) => p.source === 'unicode-le')).toBe(true);
+
+		open({ '/w/clean.txt': 'clean\n' });
+		await runCommand('unicode-le.scanWorkspace');
+		expect(_diagnostics().size).toBe(0);
+	});
+
+	it('follows the positions setting on screen, and decides the copy separately', async () => {
+		open();
+		_setConfig('unicode-le.showPositions', false);
+		_setConfig('unicode-le.copyToClipboardEnabled', true);
+		await runCommand('unicode-le.scanWorkspace');
+		expect(report()).not.toMatch(/\*\*\d+:\d+\*\*/);
+		expect(_clipboardText()).toMatch(/\*\*\d+:\d+\*\*/);
+		expect(_clipboardText()).toContain('> Not read: ');
+	});
+
+	it('prints the report the README shows as its sample', async () => {
+		open();
+		await runCommand('unicode-le.scanFolder', Uri.file('/w'));
+
+		const readme = readFileSync(
+			join(__dirname, '..', '..', 'README.md'),
+			'utf8',
+		);
+		const shown = report()
+			.split('\n')
+			.filter((line) => line.startsWith('- ') || line.startsWith('## '));
+		expect(shown).toHaveLength(8);
+		for (const line of shown) expect(readme).toContain(line);
+		expect(readme).toContain(
+			'3 finding(s) in 4 file(s) scanned; 2 file(s) not fully judged.',
+		);
 	});
 });
 

@@ -12,12 +12,20 @@
 	"Not judged": "Chưa đánh giá",
 	"Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.": "Không tìm thấy gì. Im lặng không có nghĩa là an toàn: một ký tự dễ nhầm lẫn được thêm vào sau khi tạo bảng sẽ không bị gắn cờ.",
 	"Run Unicode-LE: Detect Unicode Risks": "Chạy Unicode-LE: Phát hiện rủi ro Unicode",
-	"Scanning the workspace for Unicode risks...": "Đang quét không gian làm việc để tìm rủi ro Unicode...",
 	"Unicode-LE report": "Báo cáo Unicode-LE",
 	"Unicode-LE settings: {0}": "Cài đặt Unicode-LE: {0}",
 	"resembles {0}": "giống {0}",
 	"{0} file(s) larger than the safety limit were not read.": "{0} tệp vượt quá giới hạn an toàn đã không được đọc.",
 	"{0} finding(s)": "{0} phát hiện",
 	"{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.": "{0} phát hiện trong {1} tệp đã quét; {2} tệp chưa được đánh giá đầy đủ.",
-	"{0} of {1} files": "{0} trên {1} tệp"
+	"{0} of {1} files": "{0} trên {1} tệp",
+	"Scanning files...": "Đang quét tệp...",
+	"Scan Folder": "Quét thư mục",
+	"More files matched than the limit of {0}. The rest were not read.": "Số tệp khớp vượt quá giới hạn {0}. Phần còn lại không được đọc.",
+	"The results limit was reached. The rest of the files were not read.": "Đã đạt giới hạn kết quả. Các tệp còn lại không được đọc.",
+	"{0} file(s) that are not UTF-8 text were not read.": "{0} tệp không phải văn bản UTF-8 không được đọc.",
+	"dependency folders, build output, caches and lockfiles": "thư mục phụ thuộc, đầu ra bản dựng, bộ nhớ đệm và lockfile",
+	"images, fonts, archives and other binary files": "hình ảnh, phông chữ, tệp nén và các tệp nhị phân khác",
+	"{0} file(s) ignored by .gitignore": "{0} tệp bị .gitignore bỏ qua",
+	"Not read: {0}. The {1} settings change this.": "Không đọc: {0}. Các cài đặt {1} thay đổi điều này."
 }

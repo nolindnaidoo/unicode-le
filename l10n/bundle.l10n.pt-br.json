@@ -12,12 +12,20 @@
 	"Not judged": "Não avaliado",
 	"Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.": "Nada encontrado. Silêncio não é garantia: um caractere confundível adicionado depois que as tabelas foram geradas não é sinalizado.",
 	"Run Unicode-LE: Detect Unicode Risks": "Executar Unicode-LE: detectar riscos Unicode",
-	"Scanning the workspace for Unicode risks...": "Verificando riscos Unicode no espaço de trabalho...",
 	"Unicode-LE report": "Relatório do Unicode-LE",
 	"Unicode-LE settings: {0}": "Configurações do Unicode-LE: {0}",
 	"resembles {0}": "parece {0}",
 	"{0} file(s) larger than the safety limit were not read.": "{0} arquivo(s) acima do limite de segurança não foram lidos.",
 	"{0} finding(s)": "{0} ocorrência(s)",
 	"{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.": "{0} ocorrência(s) em {1} arquivo(s) verificado(s); {2} arquivo(s) não avaliado(s) por completo.",
-	"{0} of {1} files": "{0} de {1} arquivos"
+	"{0} of {1} files": "{0} de {1} arquivos",
+	"Scanning files...": "Verificando arquivos...",
+	"Scan Folder": "Verificar pasta",
+	"More files matched than the limit of {0}. The rest were not read.": "Mais arquivos corresponderam do que o limite de {0}. Os demais não foram lidos.",
+	"The results limit was reached. The rest of the files were not read.": "O limite de resultados foi atingido. Os demais arquivos não foram lidos.",
+	"{0} file(s) that are not UTF-8 text were not read.": "{0} arquivo(s) que não são texto UTF-8 não foram lidos.",
+	"dependency folders, build output, caches and lockfiles": "pastas de dependências, saídas de build, caches e lockfiles",
+	"images, fonts, archives and other binary files": "imagens, fontes, arquivos compactados e outros arquivos binários",
+	"{0} file(s) ignored by .gitignore": "{0} arquivo(s) ignorado(s) pelo .gitignore",
+	"Not read: {0}. The {1} settings change this.": "Não lido: {0}. As configurações {1} alteram isso."
 }

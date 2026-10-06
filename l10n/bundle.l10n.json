@@ -12,12 +12,20 @@
 	"Not judged": "Not judged",
 	"Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.": "Nothing found. Silence is not a clearance: a confusable added after the tables were built is not flagged.",
 	"Run Unicode-LE: Detect Unicode Risks": "Run Unicode-LE: Detect Unicode Risks",
-	"Scanning the workspace for Unicode risks...": "Scanning the workspace for Unicode risks...",
 	"Unicode-LE report": "Unicode-LE report",
 	"Unicode-LE settings: {0}": "Unicode-LE settings: {0}",
 	"resembles {0}": "resembles {0}",
 	"{0} file(s) larger than the safety limit were not read.": "{0} file(s) larger than the safety limit were not read.",
 	"{0} finding(s)": "{0} finding(s)",
 	"{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.": "{0} finding(s) in {1} file(s) scanned; {2} file(s) not fully judged.",
-	"{0} of {1} files": "{0} of {1} files"
+	"{0} of {1} files": "{0} of {1} files",
+	"Scanning files...": "Scanning files...",
+	"Scan Folder": "Scan Folder",
+	"More files matched than the limit of {0}. The rest were not read.": "More files matched than the limit of {0}. The rest were not read.",
+	"The results limit was reached. The rest of the files were not read.": "The results limit was reached. The rest of the files were not read.",
+	"{0} file(s) that are not UTF-8 text were not read.": "{0} file(s) that are not UTF-8 text were not read.",
+	"dependency folders, build output, caches and lockfiles": "dependency folders, build output, caches and lockfiles",
+	"images, fonts, archives and other binary files": "images, fonts, archives and other binary files",
+	"{0} file(s) ignored by .gitignore": "{0} file(s) ignored by .gitignore",
+	"Not read: {0}. The {1} settings change this.": "Not read: {0}. The {1} settings change this."
 }
