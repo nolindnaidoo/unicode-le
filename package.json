@@ -3,7 +3,7 @@
 	"publisher": "nolindnaidoo",
 	"displayName": "Unicode-LE",
 	"description": "Find the Unicode that hides meaning in a codebase, and never print one of those characters into the report",
-	"version": "1.0.1",
+	"version": "1.1.0",
 	"license": "MIT",
 	"author": {
 		"name": "nolindnaidoo",
