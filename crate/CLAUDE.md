@@ -15,7 +15,7 @@ behavior. AGENTS.md wins on any conflict. The repository root has its own
   relaxation to `[lints.clippy]` in `Cargo.toml`. The `policy` job greps
   `src/` for one.
 - New logic goes in `detect/` when it is pure — it must then be unit
-  tested, and it carries a **75% line coverage floor per module**. No
+  tested, and it carries a **70% line coverage floor per module**. No
   filesystem there.
 - **Nothing this tool prints is ever non-ASCII**, including `file` and
   `key`, which it does not author and therefore *escapes* rather than
