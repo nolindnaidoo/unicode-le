@@ -5,7 +5,7 @@ The Rust CLI and MCP server.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.2] - 2026-10-11
 
 ### Added
 
@@ -16,6 +16,11 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   dependencies and toolchain. `the_shared_unicode_tables_are_this_crates`
   fails when the file and the crate disagree, so a dependency bump that moves
   one character moves the extension with it. Behaviour is unchanged.
+
+### Fixed
+
+- The family list's String-LE line no longer promises a position for every
+  string.
 
 ## [0.2.1] - 2026-08-15
 
@@ -234,3 +239,4 @@ that a declared script is an *expected* script came from that run, and
 [0.1.2]: https://crates.io/crates/unicode-le/0.1.2
 [0.2.0]: https://crates.io/crates/unicode-le/0.2.0
 [0.2.1]: https://crates.io/crates/unicode-le/0.2.1
+[0.2.2]: https://crates.io/crates/unicode-le/0.2.2
