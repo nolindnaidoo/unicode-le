@@ -27,6 +27,10 @@
 
 ---
 
+<p align="center">
+  <img src="assets/demos/editor.gif" alt="Unicode-LE in VS Code" style="max-width: 100%; height: auto;" />
+</p>
+
 > **Useful?** A star or rating is how other developers find it —
 > [★ GitHub](https://github.com/nolindnaidoo/unicode-le) ·
 > [★ Open VSX](https://open-vsx.org/extension/nolindnaidoo/unicode-le/reviews) ·
@@ -60,6 +64,10 @@ The same engine runs as an [MCP](https://modelcontextprotocol.io) server, so an 
 | **VS Code** 1.101+ | Nothing to install — the extension registers `detect_unicode_risks` with agent mode |
 | **Claude Code** | `claude mcp add unicode-le -- npx -y unicode-le-mcp` |
 | **Cursor, Windsurf, anything else** | point it at `npx unicode-le-mcp` |
+
+<p align="center">
+  <img src="assets/demos/mcp.gif" alt="An agent in Claude Code calling the unicode-le MCP server" style="max-width: 100%; height: auto;" />
+</p>
 
 ```
 detect_unicode_risks(content, kinds?, scripts?, format?, filename?, maxResults?)
@@ -203,7 +211,7 @@ The settings that shape a scan are under [Settings](#settings).
 The same screen runs from a terminal or a CI step: a Rust CLI in [`crate/`](crate/README.md), sharing one corpus with the extension — [`crate/fixtures/`](crate/fixtures/) — so the two can never read a document differently.
 
 <p align="center">
-  <img src="assets/demo.gif" alt="unicode-le in a terminal" style="max-width: 100%; height: auto;" />
+  <img src="assets/demos/cli.gif" alt="unicode-le in a terminal" style="max-width: 100%; height: auto;" />
 </p>
 
 ```bash
