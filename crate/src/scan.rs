@@ -199,13 +199,17 @@ pub(crate) fn exit_code(report: &Report, fail_on: FailOn, strict: bool) -> u8 {
 /// not author, the path, is escaped here for the same reason.
 pub(crate) fn describe(report: &FileReport, finding: &Finding) -> String {
     format!(
-        "{}:{}:{}  [{}] {} {}{}  {}",
+        "{}:{}:{}  [{}] {} {}{}{}  {}",
         crate::escape::text(&report.file),
         finding.position.line,
         finding.position.column,
         severity_name(finding.severity),
         finding.kind.name(),
         finding.codepoints.join(" "),
+        // What a confusable reads as is the finding, and the detail
+        // sentence points at the report field that holds it. A person at
+        // a terminal has no report, so the line has to carry it.
+        resembles(&finding.resembles),
         // The document's own name for the place, where it has one. A
         // key is text out of the document, so it goes through the same
         // escape as the path: a locale catalogue can hold a key with a
@@ -217,6 +221,13 @@ pub(crate) fn describe(report: &FileReport, finding: &Finding) -> String {
             .unwrap_or_default(),
         finding.detail
     )
+}
+
+fn resembles(codepoints: &[String]) -> String {
+    if codepoints.is_empty() {
+        return String::new();
+    }
+    format!(" (resembles {})", codepoints.join(" "))
 }
 
 /// One refusal as a human line.
@@ -378,6 +389,16 @@ mod tests {
         assert!(line.contains("a.ts:1:10"), "{line}");
         assert!(line.contains("[high] bidi-control U+202E"), "{line}");
         assert!(line.is_ascii(), "{line}");
+    }
+
+    #[test]
+    fn a_confusable_line_names_what_it_resembles() {
+        let scanned = one("let \u{FF26} = 1;\n");
+        let line = describe(&scanned, &scanned.findings[0]);
+        assert!(
+            line.contains("confusable U+FF26 (resembles U+0046)"),
+            "{line}"
+        );
     }
 
     /// **The regression.** A refusal detail was printed to stderr raw,

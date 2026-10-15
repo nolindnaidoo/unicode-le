@@ -71,7 +71,8 @@ unicode-le --fail-on bidi .
 ```
 
 Exit **0** clean, **1** findings, **2** the question was malformed.
-stdout is one JSON document; stderr is what you see above.
+stderr is what you see above. stdout is one JSON document when it is piped
+or redirected and stays silent at a terminal.
 
 ## Install
 

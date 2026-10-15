@@ -169,7 +169,10 @@ crate/src/
   reader is told what was not covered. `--strict` is the only way one
   reaches the exit code.
 - **stdout is protocol, stderr is human. There is no `--json` flag.**
-  One JSON document for the run — not JSON Lines, unlike `regex-le` —
+  stdout stays silent when it is a terminal, because the stderr listing
+  already covers a person reading it, so every fact the report carries
+  that a person needs (a confusable's `resembles`) is on the stderr line
+  too. One JSON document for the run — not JSON Lines, unlike `regex-le` —
   because the interesting numbers here are totals.
 - **Refusals speak the caller's vocabulary.** An MCP caller has no
   command line; no message aimed at one names a flag. A test asserts no

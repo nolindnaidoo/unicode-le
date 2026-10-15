@@ -371,8 +371,10 @@ script context was still screened for bidi controls and invisibles.
 
 ## Output contract
 
-**stdout is protocol, stderr is human. There is no `--json` flag.** One
-JSON document for the whole run, `schema: 1`, no timestamp — two runs
+**stdout is protocol, stderr is human. There is no `--json` flag.**
+stdout stays silent when it is a terminal, because the stderr listing
+already says the same thing to a person; piped or redirected, it carries
+the report. One JSON document for the whole run, `schema: 1`, no timestamp — two runs
 over an unchanged tree produce identical bytes, which is most of what a
 report in CI is for.
 
