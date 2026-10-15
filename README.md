@@ -215,7 +215,7 @@ The same screen runs from a terminal or a CI step: a Rust CLI in [`crate/`](crat
 </p>
 
 ```bash
-unicode-le .                          # every finding in the tree, as JSON on stdout
+unicode-le .                          # every finding in the tree; JSON on stdout when piped
 unicode-le --fail-on bidi .           # in CI, for the CVE and nothing else
 unicode-le --script Han,Cyrillic src/ # a translated tree, judged rather than refused
 unicode-le mcp                        # the same screen over MCP on stdio

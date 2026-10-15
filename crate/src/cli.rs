@@ -1,10 +1,11 @@
 //! The terminal surface.
 //!
-//! stdout is always protocol — one JSON report for the run. stderr is
-//! always for the human, and is a projection of that same report rather
-//! than parallel prose.
+//! stdout is protocol — one JSON report for the run — whenever something
+//! is reading it, and silent when it is a terminal. stderr is always for
+//! the human, and is a projection of that same report rather than
+//! parallel prose.
 
-use std::io::{Read, Write};
+use std::io::{IsTerminal, Read, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -31,6 +32,9 @@ A file plainly written in another script is not judged for confusables,
 and says so. Without being told which script to expect there is no way
 to tell a forged name from a translated one, and guessing would bury the
 real findings under every word of every translation.
+
+One JSON document on stdout when it is piped or redirected, human
+summary on stderr. At a terminal stdout stays silent.
 
 Options:
   --kind <kind>     report only these kinds (repeatable, comma-separated):
@@ -126,15 +130,9 @@ fn execute(args: &[String]) -> Result<u8, String> {
     };
     let report = scan::report(files);
 
-    let mut stdout = std::io::stdout().lock();
-    // Escaped after serialization, never before: `serde_json` would
-    // escape the backslash of a pre-escaped path and the report would
-    // stop round-tripping. See `escape`.
-    let document = serde_json::to_string(&report)
-        .map_err(|error| format!("could not serialize the report: {error}"))?;
-    let line = escape::json(&document);
-    writeln!(stdout, "{line}").map_err(|error| format!("could not write the report: {error}"))?;
-    drop(stdout);
+    let stdout = std::io::stdout();
+    let terminal = stdout.is_terminal();
+    write_report(&mut stdout.lock(), &report, terminal)?;
 
     summarise(&report);
     Ok(scan::exit_code(
@@ -142,6 +140,24 @@ fn execute(args: &[String]) -> Result<u8, String> {
         arguments.fail_on,
         arguments.strict,
     ))
+}
+
+/// A terminal gets nothing here. The stderr summary already says
+/// everything a person reads, and the JSON beside it on the same screen
+/// is the same answer a second time in a form nobody reads by eye.
+/// Anything that can parse — a pipe, a file, a subprocess — still gets
+/// the report, so no script sees a difference.
+fn write_report(out: &mut impl Write, report: &Report, terminal: bool) -> Result<(), String> {
+    if terminal {
+        return Ok(());
+    }
+    // Escaped after serialization, never before: `serde_json` would
+    // escape the backslash of a pre-escaped path and the report would
+    // stop round-tripping. See `escape`.
+    let document = serde_json::to_string(report)
+        .map_err(|error| format!("could not serialize the report: {error}"))?;
+    let line = escape::json(&document);
+    writeln!(out, "{line}").map_err(|error| format!("could not write the report: {error}"))
 }
 
 fn scan_stdin(options: &Options) -> Result<FileReport, String> {
@@ -316,6 +332,33 @@ fn plural(count: usize, one: &str, many: &str) -> String {
 mod tests {
     use super::*;
     use crate::detect::Kind;
+
+    fn sample_report() -> Report {
+        let file = scan::scan_content(
+            "let a = \"\u{202E}\";\n",
+            "a.ts".into(),
+            &Options::default(),
+        );
+        scan::report(vec![file])
+    }
+
+    #[test]
+    fn a_pipe_gets_the_report() {
+        let mut out = Vec::new();
+        write_report(&mut out, &sample_report(), false).expect("a write");
+        let text = String::from_utf8(out).expect("utf-8");
+        assert_eq!(text.lines().count(), 1);
+        assert!(text.starts_with('{'), "{text}");
+        assert!(text.is_ascii(), "{text}");
+    }
+
+    /// The summary on stderr already covers a person at a terminal.
+    #[test]
+    fn a_terminal_gets_no_json() {
+        let mut out = Vec::new();
+        write_report(&mut out, &sample_report(), true).expect("a write");
+        assert!(out.is_empty());
+    }
 
     #[test]
     fn every_documented_flag_is_parsed_and_the_reverse() {
