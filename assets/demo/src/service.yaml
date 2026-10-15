@@ -1,4 +1,0 @@
-service:
-  display:
-    label: "‮"
-  retries: 3
