@@ -1,0 +1,17 @@
+{
+  "files": [
+    "src/login.ts",
+    "src/service.yaml"
+  ],
+  "steps": [
+    {
+      "wait": 1500
+    },
+    {
+      "command": "Unicode-LE: Detect Unicode Risks"
+    },
+    {
+      "wait": 5000
+    }
+  ]
+}

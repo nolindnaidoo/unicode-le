@@ -15,6 +15,8 @@
   </a>
 </p>
 
+![An agent in Claude Code calling the unicode-le MCP server](https://raw.githubusercontent.com/nolindnaidoo/unicode-le/main/assets/demos/mcp.gif)
+
 An [MCP](https://modelcontextprotocol.io) server that finds the Unicode risks
 in a document — the characters that hide meaning: bidirectional controls,
 invisibles, homoglyphs, words that mix scripts, text that is not in NFC — the
