@@ -53,6 +53,7 @@ Open a file, run `Unicode-LE: Detect Unicode Risks`, and every character in it t
 | **VS Code** | The screen, in your editor, on a keystroke | [Marketplace](https://marketplace.visualstudio.com/items?itemName=nolindnaidoo.unicode-le) |
 | **Cursor, VSCodium, Windsurf** | The same extension | [Open VSX](https://open-vsx.org/extension/nolindnaidoo/unicode-le) |
 | **A terminal or a CI step** | The same screen over a whole tree, with exit codes | `cargo install unicode-le` · [crates.io](https://crates.io/crates/unicode-le) |
+| **A terminal, via Node** | The same command line, held to the Rust one byte for byte | `npx unicode-le` · [npm](https://www.npmjs.com/package/unicode-le) |
 | **Any MCP agent, via Node** | `detect_unicode_risks` over stdio | `npx unicode-le-mcp` · [npm](https://www.npmjs.com/package/unicode-le-mcp) |
 
 ## Use it from an AI agent
@@ -208,7 +209,7 @@ The settings that shape a scan are under [Settings](#settings).
 
 ## The CLI
 
-The same screen runs from a terminal or a CI step: a Rust CLI in [`crate/`](crate/README.md), sharing one corpus with the extension — [`crate/fixtures/`](crate/fixtures/) — so the two can never read a document differently.
+The same screen runs from a terminal or a CI step: a Rust CLI in [`crate/`](crate/README.md), sharing one corpus with the extension — [`crate/fixtures/`](crate/fixtures/) — so the two can never read a document differently. The same command line also ships on npm as `unicode-le`, for a machine with Node and no Rust, and CI holds it to the crate byte for byte on three operating systems.
 
 <p align="center">
   <img src="assets/demos/cli.gif" alt="unicode-le in a terminal" style="max-width: 100%; height: auto;" />
@@ -308,12 +309,12 @@ a build only tells you how busy the runner was.
 <!-- coverage:start -->
 | Metric | Coverage |
 | --- | --- |
-| Statements | 89.72% |
-| Branches | 81.45% |
-| Functions | 96.34% |
-| Lines | 91.49% |
+| Statements | 78.99% |
+| Branches | 70.87% |
+| Functions | 82.25% |
+| Lines | 81.67% |
 
-201 test cases across 16 files, plus an integration suite that runs
+220 test cases across 18 files, plus an integration suite that runs
 in a real VS Code extension host and an end-to-end test that installs the
 built `.vsix` into a clean profile.
 

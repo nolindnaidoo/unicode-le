@@ -79,9 +79,11 @@ or redirected and stays silent at a terminal.
 | Route | Command | Worth knowing |
 |---|---|---|
 | **cargo** | `cargo install unicode-le` | Any platform, needs **Rust 1.88+**. |
+| **npm** | `npm install -g unicode-le` or `npx unicode-le` | Needs **Node 20+**. The same `unicode-le` command, held to this one byte for byte. |
 | **From source** | `git clone https://github.com/nolindnaidoo/unicode-le`<br>`cd unicode-le/crate && cargo build --release` | The same build CI runs. |
 
-No runtime, no network, nothing written.
+The cargo build needs no runtime. Neither one touches the network or
+writes a file.
 
 ## It runs on internationalised code without drowning you
 

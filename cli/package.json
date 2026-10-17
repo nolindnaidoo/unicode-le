@@ -1,0 +1,47 @@
+{
+	"name": "unicode-le",
+	"version": "1.2.0",
+	"description": "Find the Unicode characters in a codebase that hide meaning: Trojan Source bidi controls, invisibles, homoglyphs and mixed scripts. Reports codepoints, never the characters.",
+	"keywords": [
+		"unicode",
+		"trojan-source",
+		"bidi",
+		"homoglyph",
+		"security",
+		"audit",
+		"cli",
+		"unicode-le",
+		"nolindnaidoo",
+		"letools"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "Nolin Naidoo",
+		"url": "https://nolindnaidoo.com"
+	},
+	"homepage": "https://letools.dev/tools/unicode-le",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nolindnaidoo/unicode-le.git",
+		"directory": "cli"
+	},
+	"bugs": {
+		"url": "https://github.com/nolindnaidoo/unicode-le/issues"
+	},
+	"type": "commonjs",
+	"bin": {
+		"unicode-le": "cli.js"
+	},
+	"files": [
+		"cli.js",
+		"README.md",
+		"LICENSE"
+	],
+	"engines": {
+		"node": ">=20"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	}
+}

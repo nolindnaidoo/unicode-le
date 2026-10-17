@@ -332,6 +332,8 @@ rather than delaying it.
 
 One concern per change. If a doc describes the thing you changed —
 README, CHANGELOG, SPEC.md or this file — it moves in the same commit.
-Release tags are `crate-v*`, and a release goes out by dispatching
+Since 1.2.0 the crate carries the repository's one version and releases
+from its one tag, `v<version>` (earlier releases were tagged `crate-v*`);
+the root `AGENTS.md` has the release steps. A release goes out by dispatching
 `release-crate.yml` with its publish opt-in, never by pushing a tag: a
 crates.io version can never be reused.
