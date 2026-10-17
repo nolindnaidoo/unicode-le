@@ -17,6 +17,9 @@
   <a href="https://www.npmjs.com/package/unicode-le-mcp">
     <img src="https://img.shields.io/npm/v/unicode-le-mcp?style=for-the-badge&label=MCP%20server&color=blue&logo=npm" alt="unicode-le-mcp on npm" />
   </a>
+  <a href="https://www.npmjs.com/package/unicode-le">
+    <img src="https://img.shields.io/npm/v/unicode-le?style=for-the-badge&label=npm%20CLI&color=blue&logo=npm" alt="unicode-le on npm" />
+  </a>
   <a href="https://crates.io/crates/unicode-le">
     <img src="https://img.shields.io/crates/v/unicode-le?style=for-the-badge&label=Rust%20CLI&color=blue&logo=rust" alt="unicode-le on crates.io" />
   </a>
@@ -214,6 +217,22 @@ The same screen runs from a terminal or a CI step: a Rust CLI in [`crate/`](crat
 <p align="center">
   <img src="assets/demos/cli.gif" alt="unicode-le in a terminal" style="max-width: 100%; height: auto;" />
 </p>
+
+**Install it from npm** ([`unicode-le`](https://www.npmjs.com/package/unicode-le)) **or from crates.io** ([`unicode-le`](https://crates.io/crates/unicode-le)). Both install the same `unicode-le` command.
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/unicode-le">
+    <img src="https://img.shields.io/npm/v/unicode-le?style=for-the-badge&label=npm%20CLI&color=blue&logo=npm" alt="unicode-le on npm" />
+  </a>
+  <a href="https://crates.io/crates/unicode-le">
+    <img src="https://img.shields.io/crates/v/unicode-le?style=for-the-badge&label=Rust%20CLI&color=blue&logo=rust" alt="unicode-le on crates.io" />
+  </a>
+</p>
+
+```bash
+npm install -g unicode-le   # or run it once: npx unicode-le
+cargo install unicode-le
+```
 
 ```bash
 unicode-le .                          # every finding in the tree; JSON on stdout when piped
