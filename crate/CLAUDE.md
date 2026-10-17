@@ -61,6 +61,12 @@ behavior. AGENTS.md wins on any conflict. The repository root has its own
   never reported as a pass. `cargo test <filter>` exits 0 when the filter
   matches nothing, which is why `coverage-matrix` prints markers and the
   job greps for them.
+- **The command line has a twin.** The npm package `unicode-le`, built
+  from the extension's `src/cli/` over the ported engine, mirrors
+  `cli.rs`, `scan.rs`, `walk.rs`, `escape.rs` and `mcp/` byte for byte,
+  and `bun ../scripts/check-cli-parity.ts` fails on any difference. A
+  change to a flag, a message, the walk, the escaping, an exit code or an
+  MCP reply changes `src/cli/` in the same commit.
 - Write a regression test for every bug you fix, and **observe it fail
   before the fix**. The quadratic above was proved by reverting the fix
   and watching the budget test report 13.02x against its 6x limit.

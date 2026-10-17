@@ -65,6 +65,14 @@ artifact users actually install.
   the active buffer, read by a person. The CLI is terminal-first: a tree walk,
   exit codes and one JSON report, none of which has an editor equivalent. That
   is not drift, and nothing holds them equal — see `crate/SPEC.md`.
+- **The npm command line is the crate's surface, not the extension's.**
+  `src/cli/` builds the npm package `unicode-le`, which installs the same
+  command the crate does, so it is held to the Rust CLI byte for byte by
+  `bun run check:cli-parity` (after `bun run build:cli` and a `cargo build`
+  in `crate/`), MCP replies included. A change to the crate's flags, walk,
+  escaping, exit codes or output changes `src/cli/` in the same commit.
+  `--version` is compared too, because every surface carries one version;
+  see AGENTS.md, Release.
 - **Never ask the JavaScript engine a Unicode question.** Every property the
   engine needs comes from `crate/fixtures/unicode-tables.json`, which the crate
   renders and a crate test holds equal to the crate. No `\p{…}`, no

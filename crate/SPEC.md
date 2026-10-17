@@ -496,6 +496,16 @@ file named explicitly is always read.
 
 ---
 
+**Held equal: this surface and the npm one.** The npm package
+`unicode-le` installs a command named `unicode-le`, built from the
+extension's `src/cli/` over the extension's port of this crate, and
+nobody running `unicode-le` can tell which one they have. It is held to
+everything in this section byte for byte — flags, walk, findings,
+refusals, escaping, exit codes, stdout, stderr, and every reply
+`unicode-le mcp` writes — by `scripts/check-cli-parity.ts`. A change to
+this surface changes `src/cli/` in the same commit. That includes
+`--version`: every surface in the repository carries one version.
+
 ## The MCP surface
 
 - **`detect_unicode_risks`** — a document in, findings and refusals out.
