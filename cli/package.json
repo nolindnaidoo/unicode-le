@@ -1,6 +1,6 @@
 {
 	"name": "unicode-le",
-	"version": "1.2.2",
+	"version": "1.2.3",
 	"description": "Find the Unicode characters in a codebase that hide meaning: Trojan Source bidi controls, invisibles, homoglyphs and mixed scripts. Reports codepoints, never the characters.",
 	"keywords": [
 		"unicode",
