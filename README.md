@@ -328,12 +328,12 @@ a build only tells you how busy the runner was.
 <!-- coverage:start -->
 | Metric | Coverage |
 | --- | --- |
-| Statements | 78.99% |
-| Branches | 70.87% |
-| Functions | 82.25% |
-| Lines | 81.67% |
+| Statements | 79.26% |
+| Branches | 71.22% |
+| Functions | 82.30% |
+| Lines | 81.80% |
 
-220 test cases across 18 files, plus an integration suite that runs
+224 test cases across 19 files, plus an integration suite that runs
 in a real VS Code extension host and an end-to-end test that installs the
 built `.vsix` into a clean profile.
 
