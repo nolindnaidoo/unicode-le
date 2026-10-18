@@ -3,7 +3,7 @@
 	"publisher": "nolindnaidoo",
 	"displayName": "Unicode-LE: Invisible Character, Bidi & Trojan Source Detector",
 	"description": "Invisible character detector: find the bidi controls, zero-width characters, homoglyphs and mixed scripts that hide meaning in code (Trojan Source)",
-	"version": "1.2.2",
+	"version": "1.2.3",
 	"license": "MIT",
 	"author": {
 		"name": "nolindnaidoo",
