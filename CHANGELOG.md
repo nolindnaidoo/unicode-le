@@ -15,6 +15,13 @@ repository while it held the CLI alone.
 
 ### Changed
 
+- **Activates once the window has started, instead of on 32 language
+  IDs.** vsce publishes every `onLanguage:` activation event as a marketplace
+  tag, and Open VSX scores tags, so 32 language names diluted the
+  keywords people search for. Unicode-LE, its status bar item and its MCP server
+  are now ready in every window shortly after startup, rather than when the
+  first file in one of those languages opens.
+
 - **The name carries the next words people search for.** Unicode-LE ranked
   12th for "bidi" and 16th for "trojan source" on 2026-10-18, because
   neither was in the name. The name is now "Unicode-LE: Invisible Character,
