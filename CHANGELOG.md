@@ -11,6 +11,15 @@ npm command line. The Rust CLI in `crate/` keeps its own
 version and releases from one tag. The entries below 1.0.0 describe this
 repository while it held the CLI alone.
 
+## [Unreleased]
+
+### Changed
+
+- **The name carries the next words people search for.** Unicode-LE ranked
+  12th for "bidi" and 16th for "trojan source" on 2026-10-18, because
+  neither was in the name. The name is now "Unicode-LE: Invisible Character,
+  Bidi & Trojan Source Detector".
+
 ## [1.2.2] - 2026-10-18
 
 ### Changed
