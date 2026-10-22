@@ -121,8 +121,10 @@ export async function scanWorkspace(
 			const summary: ScanSummary = {
 				read,
 				tooLarge,
-				// Never counted here: a file that is not UTF-8 is refused by name.
+				// Never counted here: a file that is not UTF-8 is refused by name,
+				// and so is one that could not be read, with the system's message.
 				notText: 0,
+				unreadable: 0,
 				fileLimitReached,
 				ignored,
 				stoppedEarly,
