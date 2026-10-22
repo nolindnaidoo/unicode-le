@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import type { Telemetry } from '../telemetry/telemetry';
 import type { Notifier } from '../ui/notifier';
+import { createNotifier } from '../ui/notifier';
 import type { RatingPrompt } from '../ui/ratingPrompt';
 import type { StatusBar } from '../ui/statusBar';
 import { detectInActiveDocument } from './detect';
+import { guarded } from './guard';
 import { scanFolder, scanWorkspace } from './scanWorkspace';
 
 export interface CommandDependencies {
@@ -22,18 +24,24 @@ export function registerCommands(
 		diagnostics,
 		vscode.commands.registerCommand(
 			'unicode-le.detect',
-			async () => await detectInActiveDocument(deps),
+			guarded(deps.notifier, async () => await detectInActiveDocument(deps)),
 		),
 		vscode.commands.registerCommand(
 			'unicode-le.scanWorkspace',
-			async () => await scanWorkspace(deps, diagnostics),
+			guarded(
+				createNotifier(),
+				async () => await scanWorkspace(deps, diagnostics),
+			),
 		),
 		// The Explorer hands over the folder that was clicked. From the
 		// palette there is none, and the command asks.
 		vscode.commands.registerCommand(
 			'unicode-le.scanFolder',
-			async (picked?: vscode.Uri) =>
-				await scanFolder(deps, diagnostics, picked),
+			guarded(
+				createNotifier(),
+				async (picked?: vscode.Uri) =>
+					await scanFolder(deps, diagnostics, picked),
+			),
 		),
 	];
 	for (const command of commands) context.subscriptions.push(command);
