@@ -9,5 +9,6 @@
 import { name, version } from './info';
 import { TOOLS } from './tools';
 import { serve } from './transport';
+import { escapedWriter } from './wire';
 
-serve({ name, version }, TOOLS);
+serve({ name, version }, TOOLS, process.stdin, escapedWriter(process.stdout));
