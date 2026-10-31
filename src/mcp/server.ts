@@ -9,5 +9,11 @@
 import { name, version } from './info';
 import { TOOLS } from './tools';
 import { serve } from './transport';
+import { escapedWriter } from './wire';
 
-serve({ name, version }, TOOLS);
+// The crate's server and the npm command line's stop at the first reply
+// they cannot write. A client that went away raised an unhandled EPIPE
+// here, and the host logged a Node stack trace as the server crashing.
+process.stdout.once('error', () => process.exit(2));
+
+serve({ name, version }, TOOLS, process.stdin, escapedWriter(process.stdout));
